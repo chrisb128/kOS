@@ -84,7 +84,7 @@ if ship:orbit:body:name = parentBody:name {
 
     if (abs(ship:obt:apoapsis - ship:obt:periapsis) > 2000) {
         logStatus("Circularizing").
-        circularizeAtAp().
+        circularizeAtPe().
         executeNode().
     }
 
