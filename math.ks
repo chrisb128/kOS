@@ -53,6 +53,7 @@ declare function maneuverTime {
 
     local f is ship:maxThrust * 1000.  // Engine Thrust (kg * m/s²)
     local p is avgIsp(stageEngines).          // Engine ISP (s)
+    if p = 0 return 0.
 
     local m is ship:mass * 1000.        // Starting mass (kg)
     local e is constant:e.              // Base of natural log
@@ -79,12 +80,13 @@ declare function avgIsp {
 
     local totalWeightedIsp is sum(engs, { parameter item. return item:isp * maxFuelMassRate(item).}).
     local totalFlow is sum(engs, { parameter item. return maxFuelMassRate(item).}).
-
+    if totalFlow = 0 return 0.
     return totalWeightedIsp / totalFlow.
 }
 
 declare function maxFuelMassRate {
     local parameter eng.
+    if (eng:isp = 0) return 0.
     return eng:maxThrust / (eng:isp * constant:g0).
 }
 
