@@ -13,22 +13,22 @@ declare function autoWarp {
     else if targetTime > 200000 {
         set kUniverse:timewarp:warp to 7. // 100000x
     }
-    else if targetTime > 20000 {
+    else if targetTime > 10000 {
         set kUniverse:timewarp:warp to 6. // 10000x
     }
     else if targetTime > 2000 {
         set kUniverse:timewarp:warp to 5. // 1000x
     }
-    else if targetTime > 200 {
+    else if targetTime > 100 {
         set kUniverse:timewarp:warp to 4. // 100x
     }
-    else if targetTime > 100 {
+    else if targetTime > 50 {
         set kUniverse:timewarp:warp to 3. // 50x
     }
-    else if targetTime > 20 {
+    else if targetTime > 10 {
         set kUniverse:timewarp:warp to 2. // 10x
     }
-    else if targetTime > 10 {
+    else if targetTime > 2 {
         set kUniverse:timewarp:warp to 1. // 5x
     }
     else {
