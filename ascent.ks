@@ -15,20 +15,20 @@ declare function ascent {
         stage.
     }
 
-    set turnStart to ship:body:atm:height * 0.1.
+    set turnStart to ship:body:atm:height * 0.015.
     set turnEnd to targetAp * 0.9.
 
     local function ascentCurve {
         parameter p.
 
-        local s is (p + 0.08) * 10.
+        local s is (p + 0.08) * 9.
         return 1 - p ^ (1 / s).
     }
 
     until ship:apoapsis > targetAp {
         local limitedThrottle is min(20 / (ship:availableThrust / ship:mass), 1).
         
-        if ship:altitude > ship:body:atm:height * 0.4 {
+        if ship:altitude > ship:body:atm:height * 0.35 {
             set limitedThrottle to 1.
         } 
 
