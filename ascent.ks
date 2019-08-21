@@ -1,12 +1,11 @@
 run once logging.
 run once math.
 
-declare function launch {
+declare function ascent {
     parameter targetAp.
 
     local steerLock to heading(90, 90).
     local throttleLock to 1.
-    local body to ship:orbit:body.
 
     lock steering to steerLock.
     lock throttle to throttleLock.
@@ -16,21 +15,20 @@ declare function launch {
         stage.
     }
 
-    set turnStart to 1000.
+    set turnStart to ship:body:atm:height * 0.1.
     set turnEnd to targetAp * 0.9.
 
     local function ascentCurve {
         parameter p.
 
-        local s is (p + 0.08) * 9.
+        local s is (p + 0.08) * 10.
         return 1 - p ^ (1 / s).
     }
 
     until ship:apoapsis > targetAp {
-        local maxAcc is ship:maxThrust / ship:mass.
-        local limitedThrottle is min(20 / maxAcc, 1).
+        local limitedThrottle is min(20 / (ship:availableThrust / ship:mass), 1).
         
-        if ship:altitude > 25000 {
+        if ship:altitude > ship:body:atm:height * 0.4 {
             set limitedThrottle to 1.
         } 
 
@@ -60,7 +58,7 @@ declare function launch {
     set warpMode to "PHYSICS".
     SET warp to 3.
 
-    until ship:altitude > body:atm:height {
+    until ship:altitude > ship:obt:body:atm:height {
         set steerLock to ship:prograde.
     }    
     
