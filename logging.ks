@@ -18,3 +18,10 @@ declare function logInfo {
 
     print message:padright(fieldWidth) AT (0, fieldNumber).
 }
+
+declare function formatVec {
+    parameter v.
+    parameter r is 0.
+
+    return "V(" + round(v:x, r) + ", " + round(v:y, r) + ", " + round(v:z, r) + ")".
+}
