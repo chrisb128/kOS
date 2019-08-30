@@ -1,4 +1,4 @@
-declare function circularizeAtAp {
+declare function addCircularizeNodeAtAp {
     
     local body to ship:orbit:body.
 
@@ -9,7 +9,7 @@ declare function circularizeAtAp {
     add node(time:seconds + eta:apoapsis, 0, 0, finalV - initV).
 }
 
-declare function circularizeAtPe {
+declare function addCircularizeNodeAtPe {
     
     local body to ship:orbit:body.
 
