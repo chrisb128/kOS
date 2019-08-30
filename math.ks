@@ -90,6 +90,39 @@ declare function maxFuelMassRate {
     return eng:maxThrust / (eng:isp * constant:g0).
 }
 
+function eccentricAnomalyFromMeanAnomaly {
+    parameter M. // mean anomaly
+    parameter ec. // eccentricity
+
+    local delta is 0.00001.
+
+    local E is 0.
+    local F is 1.
+
+    set M to (M / 360.0).
+    set M to (M - floor(M)) * 360.0.
+
+    if (ec < 0.8) { set E to M. } 
+    else { set E to 180. }
+    
+    // set F to (E - ec * constant:radtodeg * sin(E) - M).
+    local i is 0.
+    for _ in range(30) {
+        if (abs(F) <= delta) { break.}
+
+        local E1 to M + ec * constant:radtodeg * sin(E).
+        set F to E1 - E.
+        set E to E1.  
+
+        // set E to E - F / (1.0 - ec * constant:radtodeg * cos(E)).
+        // set F to E - ec * constant:radtodeg * sin(E) - M.
+
+        set i to i + 1.
+    }
+
+    return E.
+}
+
 function trueAnomalyFromMeanAnomaly {
     parameter M. // mean anomaly
     parameter e. // eccentricity
