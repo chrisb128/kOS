@@ -9,48 +9,50 @@ declare function inclinationDv {
 
 declare function addMatchInclinationNode {
     parameter targetBody.
-    local parentBody is targetBody:obt:body.
-    local iChangeDv to -inclinationDv(ship:obt:velocity:orbit:mag, targetBody:obt:inclination).
-    local halfBurnTime is maneuverTime(abs(iChangeDv) / 2).
-    local shipAngV to 360 / ship:obt:period.
 
+    local parentBody is targetBody:obt:body.
+    
     local shipP to ship:position - parentBody:position.
     local shipN is vcrs(ship:obt:velocity:orbit, shipP):normalized.
     local tgtN is vcrs(targetBody:obt:velocity:orbit, targetBody:position - parentBody:position):normalized.
     local intersectV is vcrs(shipN, tgtN).
+
+    local iChange is vAng(tgtN, shipN).
+
+    local iChangeDv to -inclinationDv(ship:obt:velocity:orbit:mag, iChange).
+    local halfBurnTime is maneuverTime(abs(iChangeDv) / 2).
+    local shipAngV to 360 / ship:obt:period.
+
     
     local nodeAnomaly to angleBetween(shipP, intersectV).
-    logInfo("dAngle: " + nodeAnomaly, 3).
-    logInfo("shipAngV: " + shipAngV, 4).
     if (nodeAnomaly > 180) {
         // start with closest node
         set nodeAnomaly to nodeAnomaly - 180.
         set iChangeDv to -iChangeDv.
-        logInfo("dAngle: " + nodeAnomaly, 3).
     }
 
     local nodeTime is time:seconds + (nodeAnomaly / shipAngV).
-    logInfo("Node in T-" + round(nodeTime - time:seconds, 0), 1).
-    logInfo("dV: " + iChangeDv, 2).
     
     if (time:seconds > nodeTime - halfBurnTime - 30) {
         // switch AN/DN if too close
         set nodeAnomaly to nodeAnomaly + 180.
         set iChangeDv to -iChangeDv.
         set nodeTime to time:seconds + (nodeAnomaly / shipAngV).
-        
-        logInfo("Node in T-" + round(nodeTime - time:seconds, 0), 1).
-        logInfo("dV: " + iChangeDv, 2).
     }
-
-    add node(nodeTime, 0, iChangeDv, 0).
+    
+	local n to node(nodeTime, 0, 0, 0).
+ 	set n:normal to iChangeDv * cos(iChange/2).
+	set n:prograde to 0 - abs(iChangeDv * sin(iChange/2)).
+    add n.
+    return n.
 }
 
 
 declare function addZeroInclinationNode {    
     local parentBody is ship:obt:body.
-            
-    local iChangeDv to inclinationDv(ship:obt:velocity:orbit:mag, ship:obt:inclination).
+    local iChange is ship:obt:inclination.
+
+    local iChangeDv to inclinationDv(ship:obt:velocity:orbit:mag, iChange).
     local halfBurnTime is maneuverTime(abs(iChangeDv) / 2).
     local shipAngV to 360 / ship:obt:period.
 
@@ -60,28 +62,23 @@ declare function addZeroInclinationNode {
     local intersectV is vcrs(shipN, tgtN).
     
     local nodeAnomaly to angleBetween(shipP, intersectV).
-    logInfo("dAngle: " + nodeAnomaly, 3).
-    logInfo("shipAngV: " + shipAngV, 4).
     if (nodeAnomaly > 180) {
         // start with closest node
         set nodeAnomaly to nodeAnomaly - 180.
         set iChangeDv to -iChangeDv.
-        logInfo("dAngle: " + nodeAnomaly, 3).
     }
 
-    local nodeTime is time:seconds + (nodeAnomaly / shipAngV).
-    logInfo("Node in T-" + round(nodeTime - time:seconds, 0), 1).
-    logInfo("dV: " + iChangeDv, 2).
-    
+    local nodeTime is time:seconds + (nodeAnomaly / shipAngV).    
     if (time:seconds > nodeTime - halfBurnTime - 30) {
         // switch AN/DN if too close
         set nodeAnomaly to nodeAnomaly + 180.
         set iChangeDv to -iChangeDv.
         set nodeTime to time:seconds + (nodeAnomaly / shipAngV).
-        
-        logInfo("Node in T-" + round(nodeTime - time:seconds, 0), 1).
-        logInfo("dV: " + iChangeDv, 2).
     }
 
-    add node(nodeTime, 0, iChangeDv, 0).
+	local n to node(nodeTime, 0, 0, 0).
+ 	set n:normal to iChangeDv * cos(iChange/2).
+	set n:prograde to 0 - abs(iChangeDv * sin(iChange/2)).
+    add n.
+    return n.
 }
