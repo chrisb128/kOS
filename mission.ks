@@ -182,31 +182,33 @@ global function transferToSatellite {
     if ship:apoapsis < 0 {
 
         local nt is time:seconds + 180. // now + 3 min    
-        
-        // adjust periapsis
-        local newT is meanAnomalyAtTime(ship:obt, nt).
+
         local i is ship:obt:inclination.
-        local w is ship:obt:argumentOfPeriapsis.
+        if i > 90 {
+            set i to 180 - i.
+        }
+
+        local Vt is trueAnomalyFromEccentricAnomaly(eccentricAnomalyFromMeanAnomaly(meanAnomalyAtTime(ship:obt, nt), ship:obt:eccentricity), ship:obt:eccentricity).
+        local w is clamp360(Vt + ship:obt:argumentOfPeriapsis).
         local lan is ship:obt:lan.
-        local newPe is ship:body:radius + args:targetAp.
-        local newPos is positionAt(ship, nt). 
+        local newPe is ship:body:radius + 30000.
+        local newPos is positionAt(ship, nt).
         local newAp is (newPos - ship:body:position):mag.
         local e is eFromApPe(newAp, newPe).
         local sma is smaFromApPe(newAp, newPe).
-        
 
-        local newVec is getVectors(e, sma, w, lan, i, newT, ship:body).
+        local newVecs is stateVectorsAtTrueAnomaly(e, sma, w, lan, i, 180, ship:body).
         local cVec is velocityAt(ship, nt):orbit.
-
-        local dVec is newVec[1] - cVec.
+        local dVec is newVecs[1] - cVec.
 
         logStatus("Capturing around target body").
         add nodeFromVector(dVec, nt).
         executeNode().
-        
+
         logStatus("Circularizing").
         addCircularizeNodeAtPe().
         executeNode().
+
     }
 
     if (abs(args:targetAp - ship:apoapsis) > 2000) {
