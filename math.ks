@@ -125,7 +125,7 @@ function newtonSolver {
     local x0 is guess.
     for n in range(c + 1) {
         if (abs(err) <= d) { break. }
-        if (n > c) { print "!!! SOLVER OVERRUN !!!" at (0, terminal:height - 2). break. }
+        if (n >= c) { print "!!! SOLVER OVERRUN !!!" at (0, terminal:height - 2). break. }
 
         local x1 is x0 - f(x0)/df(x0).
         set err to x1 - x0.
