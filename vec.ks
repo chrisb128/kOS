@@ -25,9 +25,8 @@ global function getVectors {
     parameter Mt.
     parameter b.
 
-    local Et is eccentricAnomalyFromMeanAnomaly(Mt, e).
-   
-    local Vt is 2 * arctan(sqrt((1 + e)/(1 - e)) * tan (Et / 2)).
+    local Et is eccentricAnomalyFromMeanAnomaly(Mt, e).   
+    local Vt is trueAnomalyFromEccentricAnomaly(Et, e).
     
     return getTrueVectors(e, sma, w, lan, i, Vt, b).
 }
