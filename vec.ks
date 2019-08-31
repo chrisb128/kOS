@@ -1,8 +1,5 @@
 run once math.
 
-// algorithm reference
-// https://downloads.rene-schwarz.com/download/M001-Keplerian_Orbit_Elements_to_Cartesian_State_Vectors.pdf
-
 global function getOrbitVectors {
     parameter o is ship:obt.
     parameter t is time:seconds.
@@ -28,13 +25,9 @@ global function getVectors {
     parameter Mt.
     parameter b.
 
-    // // 2. Solve Kepler's Equation `Mt = Et - e * sin(Et)` for eccentric anomaly Et.
     local Et is eccentricAnomalyFromMeanAnomaly(Mt, e).
    
-    // // 3. Obtain true anomaly from eccentric anomaly
-    // //local Vt is 2 * arcTan2( sqrt(1 + e) * sin( Et / 2 ), sqrt(1 - e) * cos( Et / 2 ) ).    
     local Vt is 2 * arctan(sqrt((1 + e)/(1 - e)) * tan (Et / 2)).
-    //local Vt is trueAnomalyFromMeanAnomaly(Mt, e).
     
     local vel is velocityVecAt(Vt, sma, e, i, lan, w, b).
     local pos is positionVecAt(Vt, sma, e, i, lan, w, b).
