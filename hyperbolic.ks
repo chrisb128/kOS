@@ -1,7 +1,7 @@
 // copied from https://github.com/dewiniaid/ksp-kos-scripts/blob/master/lib_util.ks
 LOCAL K_E IS constant:e.  // Shorter!
 // Divide to convert degrees to radians, multiply to convert radians to degrees.
-LOCAL K_DEGREES IS constant:degtorad.
+LOCAL K_DEGREES IS constant:radtodeg.
 
 // Return t if c else f.
 LOCAL FUNCTION IIF { PARAMETER c. PARAMETER t. PARAMETER f. IF c { RETURN t. } RETURN f. }
