@@ -193,6 +193,28 @@ function trueAnomalyAtTime {
     return trueAnomalyFromMeanAnomaly(meanAnomalyAtTime(obt, t), obt:eccentricity).
 }
 
+function vecToPe {
+    parameter i is ship:obt:inclination.
+    parameter lan is ship:obt:lan.
+    parameter w is ship:obt:argumentOfPeriapsis.
+    parameter b is ship:obt:body.
+
+    local n is obtNormal(i, lan, b).
+    local eqAxis is vecToAn(lan, b).
+    local majAxis is angleAxis(w, n) * eqAxis.
+    return majAxis:normalized.
+}
+
+function vecToAn {
+    parameter lan is ship:obt:lan.
+    parameter b is ship:obt:body.
+
+    local lanOff is b:rotationAngle.
+    local eqAxis is latlng(0, lan - lanOff):position - b:position.
+
+    return eqAxis:normalized.
+}
+
 function obtNormal {
     parameter o. // orbitable
     parameter n. // target orbit normal.
