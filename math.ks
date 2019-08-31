@@ -216,6 +216,17 @@ function vecToAn {
 }
 
 function obtNormal {
+    parameter i is ship:obt:inclination.
+    parameter lan is ship:obt:lan.
+    parameter b is ship:obt:body.
+
+    local axis is vecToAn(lan, b).
+
+    local s is latlng(-90, 0):position - b:position.
+    local n is angleaxis(-i, axis) * s.
+    return n:normalized.
+}
+
 function smaFromApPe {
     parameter Ra.
     parameter Rp.
