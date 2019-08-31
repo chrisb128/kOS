@@ -90,37 +90,49 @@ declare function maxFuelMassRate {
     return eng:maxThrust / (eng:isp * constant:g0).
 }
 
+function clamp360 {
+    parameter t.
+
+    set t to t / 360.0.
+    return (t - floor(t)) * 360.0.
+}
+
 function eccentricAnomalyFromMeanAnomaly {
     parameter M. // mean anomaly
     parameter ec. // eccentricity
 
-    local delta is 0.00001.
-
     local E is 0.
-    local F is 1.
-
-    set M to (M / 360.0).
-    set M to (M - floor(M)) * 360.0.
+    set M to clamp360(M).
 
     if (ec < 0.8) { set E to M. } 
     else { set E to 180. }
     
-    // set F to (E - ec * constant:radtodeg * sin(E) - M).
-    local i is 0.
-    for _ in range(30) {
-        if (abs(F) <= delta) { break.}
+    return newtonSolver(
+        { parameter x. return x - ec * constant:radtodeg * sin(x) - M. },
+        { parameter x. return -ec * constant:radtodeg * cos(x) + 1. },
+        E
+    ).
+}
 
-        local E1 to M + ec * constant:radtodeg * sin(E).
-        set F to E1 - E.
-        set E to E1.  
+function newtonSolver {
+    parameter f.
+    parameter df.
+    parameter guess.
+    parameter d is 0.00001.
+    parameter c is 30.
 
-        // set E to E - F / (1.0 - ec * constant:radtodeg * cos(E)).
-        // set F to E - ec * constant:radtodeg * sin(E) - M.
+    local err is d + 1.
+    local x0 is guess.
+    for n in range(c + 1) {
+        if (abs(err) <= d) { break. }
+        if (n > c) { print "!!! SOLVER OVERRUN !!!" at (0, terminal:height - 2). break. }
 
-        set i to i + 1.
+        local x1 is x0 - f(x0)/df(x0).
+        set err to x1 - x0.
+        set x0 to x1.
     }
 
-    return E.
+    return x0.
 }
 
 function trueAnomalyFromMeanAnomaly {
