@@ -13,3 +13,4 @@ copypath("0:/warp.ks", "").
 copypath("0:/science.ks", "").
 copypath("0:/mission.ks", "").
 copypath("0:/hohmannDv.ks", "").
+copypath("0:/vec.ks", "").
