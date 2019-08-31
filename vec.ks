@@ -29,6 +29,18 @@ global function getVectors {
    
     local Vt is 2 * arctan(sqrt((1 + e)/(1 - e)) * tan (Et / 2)).
     
+    return getTrueVectors(e, sma, w, lan, i, Vt, b).
+}
+
+global function getTrueVectors {
+    parameter e.
+    parameter sma.
+    parameter w.
+    parameter lan.
+    parameter i.
+    parameter Vt.
+    parameter b.
+    
     local vel is velocityVecAt(Vt, sma, e, i, lan, w, b).
     local pos is positionVecAt(Vt, sma, e, i, lan, w, b).
 
