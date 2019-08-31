@@ -159,16 +159,16 @@ function meanAnomalyFromTrueAnomaly {
 }
 
 function radiusFromTrueAnomaly {
-    parameter a. // semi-major axis
-    parameter e. // eccentricity
     parameter v. // true anomaly
+    parameter e. // eccentricity
+    parameter a. // semi-major axis
 
     return a * ( (1-e^2) / ( 1+(e*cos(v)) ) ).
 }
 
 function eccentricAnomalyFromTrueAnomaly {
-    parameter e. // eccentricity
     parameter v. // true anomaly
+    parameter e. // eccentricity
 
     // not sure this works?
     return arctan2( 1 + e*cos(v), cos(v) + e ).
@@ -181,7 +181,9 @@ function meanAnomalyAtTime {
     local dt is t - obt:epoch.
     local n is sqrt(obt:body:mu / abs(obt:semimajoraxis)^3) * constant:radtodeg.
     //local n is 360 / obt:period.
-    return obt:meanAnomalyAtEpoch + (n * dt).
+    local Mt is obt:meanAnomalyAtEpoch + (n * dt).
+    
+    return clamp360(Mt).
 }
 
 function trueAnomalyAtTime {
