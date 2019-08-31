@@ -216,7 +216,19 @@ function vecToAn {
 }
 
 function obtNormal {
-    parameter o. // orbitable
-    parameter n. // target orbit normal.
-    return vcrs(n,vcrs(o:position-o:body:position,o:velocity:orbit)):normalized.
+function smaFromApPe {
+    parameter Ra.
+    parameter Rp.
+
+    return (Ra + Rp) / 2.
+}
+
+function eFromApPe {
+    parameter Ra.
+    parameter Rp.
+  
+    local a is smaFromApPe(Ra, Rp).
+    local b is sqrt(Ra * Rp).
+
+    return sqrt(1 - (b^2/a^2)).
 }
