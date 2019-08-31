@@ -1,6 +1,7 @@
+run once math.
 run once vec.
 
-local function drawOrbitVelocityVectors {
+global function drawOrbitVelocityVectors {
     parameter vecList is list(),
               e is ship:obt:eccentricity,
               sma is ship:obt:semiMajorAxis,
@@ -18,8 +19,8 @@ local function drawOrbitVelocityVectors {
     }
 
     for n in range(90) {
-        local Mt is n * 4.        
-        local newVec is getTrueVectors(e, sma, w, lan, i, Mt, b).
+        local Mt is n * 4.
+        local newVec is stateVectorsAtTrueAnomaly(e, sma, w, lan, i, Mt, b).
 
         set vecList[n]:start to newVec[0] + b:position.
         set vecList[n]:vec to newVec[1].

@@ -1,6 +1,6 @@
 run once math.
 
-global function getOrbitVectors {
+global function stateVectorsAtTime {
     parameter o is ship:obt.
     parameter t is time:seconds.
 
@@ -10,13 +10,12 @@ global function getOrbitVectors {
     local lan is o:lan.
     local i is o:inclination.
 
-    // 1. Calculate or set M(t)
     local Mt is meanAnomalyAtTime(o, t).
 
-    return getVectors(e, sma, w, lan, i, Mt, o:body).
+    return stateVectorsAtMeanAnomaly(e, sma, w, lan, i, Mt, o:body).
 }
 
-global function getVectors {
+global function stateVectorsAtMeanAnomaly {
     parameter e.
     parameter sma.
     parameter w.
@@ -28,10 +27,10 @@ global function getVectors {
     local Et is eccentricAnomalyFromMeanAnomaly(Mt, e).   
     local Vt is trueAnomalyFromEccentricAnomaly(Et, e).
     
-    return getTrueVectors(e, sma, w, lan, i, Vt, b).
+    return stateVectorsAtTrueAnomaly(e, sma, w, lan, i, Vt, b).
 }
 
-global function getTrueVectors {
+global function stateVectorsAtTrueAnomaly {
     parameter e.
     parameter sma.
     parameter w.

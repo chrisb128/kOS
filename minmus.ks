@@ -10,6 +10,7 @@ run once hoverslam.
 run once warp.
 run once science.
 run once time.
+run once orbit.
 run once mission.
 
 declare targetBody is minmus.
@@ -62,71 +63,6 @@ if ship:orbit:body:name = parentBody:name {
     wait 10.
 }
 
-clearVecDraws().
-
-local tgtOrbitVecs is list().
-for _ in range(360) {
-    local v is vecDraw().
-    set v:scale to 500.0.
-    set v:width to 0.0001.
-    tgtOrbitVecs:add(v).
-}
-
-local nt is time:seconds + 180. // now + 3 min    
-
-local i is ship:obt:inclination.
-local w is ship:obt:argumentOfPeriapsis.
-local lan is ship:obt:lan.
-local newPe is ship:body:radius + 30000.
-local newPos is positionAt(ship, nt).
-local newAp is (newPos - ship:body:position):mag.
-local e is eFromApPe(newAp, newPe).
-local sma is smaFromApPe(newAp, newPe).
-
-local function updateTargetOrbitVectors {
-
-    for n in range(360) {
-        local Mt is n * 1.
-        local newVec is getVectors(e, sma, w, lan, i, Mt, ship:body).
-
-        set tgtOrbitVecs[n]:start to newVec[0] + ship:body:position.
-        set tgtOrbitVecs[n]:vec to newVec[1].
-        set tgtOrbitVecs[n]:show to true.
-    }
-
-    wait 0.
-}
-
-local newVecDraw is vecDraw(
-    V(0, 0, 0), V(0, 0, 0),
-    RGB(1,0,0), "", 100.0, true, 0.001, true, true
-).
-local cVecDraw is vecDraw(
-    V(0, 0, 0), V(0, 0, 0),
-    RGB(0,1,0), "", 100.0, true, 0.001, true, true
-).
-local dVecDraw is vecDraw(
-    V(0, 0, 0), V(0, 0, 0),
-    RGB(0,0,1), "", 100.0, true, 0.001, true, true
-).
-
-until false {
-
-    
-    updateTargetOrbitVectors().
-
-    wait 0.
-}
-
-
-logStatus("Capturing around target body").
-add nodeFromVector(dVec, nt).
-executeNode().
-
-logStatus("Circularizing").
-addCircularizeNodeAtPe().
-executeNode().
-
 clearFields().
 
 if ship:orbit:body:name = targetBody:name and ship:status <> "LANDED" {
@@ -168,7 +104,7 @@ if ship:status = "LANDED" and ship:body:name = targetBody:name {
         stage.
     }
 
-    runStep(launchToOrbit(30000, false, 0, false, false, false)).
+    runStep(launchToOrbit(30000, false, 0, false, false, false, 0)).
 
     if (abs(ship:obt:inclination) > 1) {
         zeroInclination().

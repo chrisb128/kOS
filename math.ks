@@ -1,4 +1,5 @@
 run once "list.ks".
+run once hyperbolic.
 
 declare function angleBetween {
     local parameter v1.
@@ -106,12 +107,21 @@ function eccentricAnomalyFromMeanAnomaly {
 
     if (ec < 0.8) { set E to M. } 
     else { set E to 180. }
-    
-    return newtonSolver(
-        { parameter x. return x - ec * constant:radtodeg * sin(x) - M. },
-        { parameter x. return -ec * constant:radtodeg * cos(x) + 1. },
-        E
-    ).
+
+    if ec < 1 {    
+        return newtonSolver(
+            { parameter x. return x - ec * constant:radtodeg * sin(x) - M. },
+            { parameter x. return -ec * constant:radtodeg * cos(x) + 1. },
+            E
+        ).
+    } else {
+        // hopefully a good guess
+        return newtonSolver(
+            { parameter x. return ec * constant:radtodeg * sinh(x) - x - M. },
+            { parameter x. return ec * constant:radtodeg * cosh(x) - 1. },
+            E
+        ).
+    }
 }
 
 function newtonSolver {
@@ -178,7 +188,11 @@ function trueAnomalyFromEccentricAnomaly {
     parameter Et. // eccentric anomaly
     parameter e.  // eccentricity
 
-    return 2 * arctan(sqrt((1 + e)/(1 - e)) * tan (Et / 2)).
+    if (e < 1) {
+        return 2 * arctan(sqrt((1 + e)/(1 - e)) * tan(Et / 2)).
+    } else {
+        return 2 * arctan(sqrt((e + 1)/(e - 1)) * tanh(Et / 2)).
+    }
 }
 
 function meanAnomalyAtTime {
@@ -193,10 +207,9 @@ function meanAnomalyAtTime {
     return clamp360(Mt).
 }
 
-function trueAnomalyAtTime {
+function  trueAnomalyAtTime {
     parameter obt.
     parameter t.
-
     return trueAnomalyFromMeanAnomaly(meanAnomalyAtTime(obt, t), obt:eccentricity).
 }
 
