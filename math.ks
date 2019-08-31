@@ -159,7 +159,7 @@ function eccentricAnomalyFromTrueAnomaly {
     parameter v. // true anomaly
 
     // not sure this works?
-    return arccos( (cos(v) + e) / (1 + e*cos(v)) ).
+    return arctan2( 1 + e*cos(v), cos(v) + e ).
 }
 
 function meanAnomalyAtTime {
