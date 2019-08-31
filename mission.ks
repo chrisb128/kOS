@@ -3,13 +3,19 @@ run once circularize.
 run once executenode.
 run once logging.
 run once time.
+run once hohmann.
+run once vec.
 
 declare function executeSequence {
-
+    parameter l.
+    for i in l {
+        runStep(i).
+    }
 }
 
 global function runStep {
     parameter st.
+
     st:action:call(st:args).
 }
 
@@ -35,7 +41,7 @@ global function launchToOrbit {
 
 local function _launchToOrbit {
     parameter args is lexicon("targetAp", 90000, "autoStage", true, "deployFairings", true, "deployAntennas", true, "deploySolarPanels", true, "countdown", 10).
-        
+
     logStatus("Counting down").
     countdown(args:countdown).
 
@@ -86,7 +92,7 @@ local function _launchToOrbit {
     }
 
     logStatus("Circularizing").
-    circularizeAtAp().
+    addCircularizeNodeAtAp().
     executeNode().
 
 }
@@ -100,7 +106,7 @@ global function zeroInclination {
 
     if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.05) {
         logStatus("Circularizing").
-        circularizeAtPe().
+        addCircularizeNodeAtPe().
         executeNode().
     }
 }
@@ -116,7 +122,7 @@ global function matchInclination {
 
     if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.05) {
         logStatus("Circularizing").
-        circularizeAtPe().
+        addCircularizeNodeAtPe().
         executeNode().
     }
 
@@ -141,34 +147,8 @@ global function transferToSatellite {
         remove nextnode.
     }
     
-    kuniverse:quicksave().
     logStatus("Computing Hohmann Transfer").
-
-    local xferR2 is targetBody:obt:semimajoraxis + targetBody:radius + args:targetAp.
-    local xferDV is hohmannDV1(parentBody:mu, ship:obt:semimajoraxis, xferR2).
-    local xferAngle is hohmannTargetAngle(ship:obt:semimajoraxis, xferR2).
-    local xferNodeTime is timeToRelativeAngle(targetBody, ship, parentBody, xferAngle).
-    add node(xferNodeTime, 0, 0, xferDV).
-
-    logInfo("Target Angle: " + round(xferAngle, 0), 1).
-
-    local currentAngle is angleBetween(targetBody:position - parentBody:position, ship:position - parentBody:position).
-    logInfo("Current Angle: " + round(currentAngle, 0), 3).
-    logInfo("Time to target angle: T-" + round(xferNodeTime - time:seconds, 0), 4).
-    logInfo("Time to node:         T-" + round(xferNodeTime - time:seconds, 0), 5).
-
-    logStatus("Warping to node time").
-
-    local targetTime is xferNodeTime - (maneuverTime(xferDV/2)) - 120.
-    until time:seconds > targetTime {
-        autoWarp(targetTime).
-
-        set timeToAng to timeToRelativeAngle(targetBody, ship, parentBody, xferAngle).
-        local currentAngle is angleBetween(targetBody:position - parentBody:position, ship:position - parentBody:position).
-        logInfo("Current Angle: " + round(currentAngle, 0), 3).
-        logInfo("Time to target angle: T-" + round(timeToAng - time:seconds, 0), 4).
-        logInfo("Time to node:         T-" + round(xferNodeTime - time:seconds, 0), 5).
-    }.
+    addHohmannTransferNode(targetBody).
 
     logStatus("Executing Transfer").
     executeNode().
@@ -179,7 +159,8 @@ global function transferToSatellite {
             logStatus("Warping to SOI").
             
             local soiTime is eta:transition + time:seconds.
-            until (time:seconds < soiTime) {
+            until (time:seconds > soiTime) {
+                logInfo("Time to SOI: " + eta:transition, 1).
                 autoWarp(soiTime).
                 wait 10.
             }
@@ -188,34 +169,56 @@ global function transferToSatellite {
         logStatus("!!!!! No encounter found !!!!!").
         return.
     }
-    
-    if ship:apoapsis < 0 {
 
-        logStatus("Capturing around target body").
-        circularizeAtPe().
-        executeNode().
+    if (ship:obt:body:name <> targetBody:name) {
+        logStatus("Waiting for SOI change").
 
-        // captured retrograde        
-        if (ship:obt:inclination > 90) {            
-            logStatus("Captured retrograde, reversing direction").
-
-            add node(eta:periapsis + time:seconds, 0, 0, -2 * ship:orbit:velocity:orbit:mag).
-            executeNode().
-            wait 10.
+        until ship:obt:body:name = targetBody:name {        
+            logInfo("Time to SOI: " + eta:transition, 1).
+            logInfo("Time now: " + time:seconds, 2).
         }
     }
 
+    if ship:apoapsis < 0 {
+
+        local nt is time:seconds + 180. // now + 3 min    
         
+        // adjust periapsis
+        local newT is meanAnomalyAtTime(ship:obt, nt).
+        local i is ship:obt:inclination.
+        local w is ship:obt:argumentOfPeriapsis.
+        local lan is ship:obt:lan.
+        local newPe is ship:body:radius + args:targetAp.
+        local newPos is positionAt(ship, nt). 
+        local newAp is (newPos - ship:body:position):mag.
+        local e is eFromApPe(newAp, newPe).
+        local sma is smaFromApPe(newAp, newPe).
+        
+
+        local newVec is getVectors(e, sma, w, lan, i, newT, ship:body).
+        local cVec is velocityAt(ship, nt):orbit.
+
+        local dVec is newVec[1] - cVec.
+
+        logStatus("Capturing around target body").
+        add nodeFromVector(dVec, nt).
+        executeNode().
+        
+        logStatus("Circularizing").
+        addCircularizeNodeAtPe().
+        executeNode().
+    }
+
     if (abs(args:targetAp - ship:apoapsis) > 2000) {
-        logStatus("Moving to 30km Orbit").
-        logInfo("- Changing Periapsis to 30km").
+        logStatus("Moving to target Orbit").
+        logInfo("- Changing Periapsis to target at Apoapsis").
         local dV1 is -hohmannDV2(targetBody:mu, args:targetAp + targetBody:radius, ship:obt:semimajoraxis).
         
         add node(eta:apoapsis + time:seconds, 0, 0, dV1).
         executeNode().
         
         logInfo("- Circularizing at Periapsis").
-        circularizeAtPe().
+        addCircularizeNodeAtPe().
         executeNode().
     }
 
