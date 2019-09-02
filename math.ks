@@ -195,13 +195,17 @@ function trueAnomalyFromEccentricAnomaly {
     }
 }
 
+function meanMotion {
+    parameter obt.
+    return sqrt(obt:body:mu / abs(obt:semimajoraxis)^3) * constant:radtodeg.
+}
+
 function meanAnomalyAtTime {
     parameter obt.
     parameter t.
 
     local dt is t - obt:epoch.
-    local n is sqrt(obt:body:mu / abs(obt:semimajoraxis)^3) * constant:radtodeg.
-    //local n is 360 / obt:period.
+    local n is meanMotion(obt).
     local Mt is obt:meanAnomalyAtEpoch + (n * dt).
     
     return clamp360(Mt).
