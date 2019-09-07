@@ -92,14 +92,14 @@ global function velocityVecAt {
 
 global function nodeFromVector {
   parameter vec.
-  parameter t is time:seconds.
+  parameter t.
+  parameter s_pos.
+  parameter s_vel.
 
-  local s_pro is velocityAt(ship, t):orbit.
-  local s_pos is positionAt(ship, t) - body:position.
-  local s_nrm is vCrs(s_pro,s_pos).
-  local s_rad is vCrs(s_nrm,s_pro).
+  local s_nrm is V(0,0,0)-vCrs(s_vel, s_pos).
+  local s_rad is vCrs(s_nrm, s_vel).
 
-  local pro is vDot(vec,s_pro:normalized).
+  local pro is vDot(vec,s_vel:normalized).
   local nrm is vDot(vec,s_nrm:normalized).
   local rad is vDot(vec,s_rad:normalized).
 
