@@ -307,3 +307,12 @@ function timeToTrueAnomaly {
     return (meanMotion(obt) * maAtTa) + timeToPe.
 }
 
+ function velocityAtR {
+     parameter r.
+     parameter mu.
+     parameter sma.
+
+    return sqrt(mu * ( (2/r) - (1/sma))).
+ }
+
+ 
