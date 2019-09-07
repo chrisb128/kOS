@@ -98,6 +98,17 @@ function clamp360 {
     return (t - floor(t)) * 360.0.
 }
 
+function meanAnomalyFromEccentricAnomaly {
+    parameter E.
+    parameter ec.
+
+    if ec < 1 {
+        return E + ec * constant:radtodeg * sin(E).
+    } else {
+        return E + ec * constant:radtodeg * sinh(E).
+    }
+}
+
 function eccentricAnomalyFromMeanAnomaly {
     parameter M. // mean anomaly
     parameter ec. // eccentricity
