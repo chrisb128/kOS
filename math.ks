@@ -214,7 +214,13 @@ function trueAnomalyFromEccentricAnomaly {
 
 function meanMotion {
     parameter obt.
-    return sqrt(obt:body:mu / abs(obt:semimajoraxis)^3) * constant:radtodeg.
+    return meanMotionK(obt:body:mu, obt:semimajoraxis).
+}
+
+function meanMotionK {
+    parameter mu.
+    parameter a.
+    return sqrt(mu/abs(a)^3)*constant:radtodeg.
 }
 
 function meanAnomalyAtTime {
