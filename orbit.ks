@@ -14,16 +14,24 @@ global function drawOrbitVelocityVectors {
         vecList:clear().
 
         for _ in range(90) {
-            vecList:add(vecDraw()).
+            local v is vecDraw(
+                V(0, 0, 0), V(0, 0, 0),
+                RGB(0, 1, 0), "",
+                100.0, true, 0.001, true, true
+            ).
+            
+            vecList:add(v).
         }
     }
 
     for n in range(90) {
-        local Mt is n * 4.
-        local newVec is stateVectorsAtTrueAnomaly(e, sma, w, lan, i, Mt, b).
+        local t is n * 4.
+        local newVec is stateVectorsAtTrueAnomaly(e, sma, w, lan, i, t, b).
+        local st is newVec[0]:vec.
+        local v is newVec[1]:vec.
 
-        set vecList[n]:start to newVec[0] + b:position.
-        set vecList[n]:vec to newVec[1].
+        set vecList[n]:startupdater to { return st + b:position. }.
+        set vecList[n]:vec to v.
         set vecList[n]:show to true.
     }
 
