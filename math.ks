@@ -194,8 +194,11 @@ function eccentricAnomalyFromTrueAnomaly {
     parameter v. // true anomaly
     parameter e. // eccentricity
 
-    // not sure this works?
-    return arctan2( 1 + e*cos(v), cos(v) + e ).
+    if (e < 1) {
+        return 2 * arctan( sqrt((1 - e)/(1 + e)) * tan(v / 2) ).
+    } else {
+        return 2 * atanh( sqrt((e - 1)/(e + 1)) * tan(v / 2) ).
+}
 }
 
 function trueAnomalyFromEccentricAnomaly {
