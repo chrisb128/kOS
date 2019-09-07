@@ -290,3 +290,20 @@ function eFromApPe {
 
     return sqrt(1 - (b^2/a^2)).
 }
+
+function timeToTrueAnomaly {
+    parameter obt.
+    parameter t.
+
+    local maAtTa is meanAnomalyFromEccentricAnomaly(eccentricAnomalyFromTrueAnomaly(t, obt:eccentricity), obt:eccentricity).
+    local ma is meanAnomalyAtTime(obt, time:seconds).
+    local timeToPe is 0.
+    if (t < obt:trueAnomaly) {
+        set timeToPe to (360 - ma) / meanMotion(obt).
+    } else {
+        set timeToPe to -ma / meanMotion(obt).
+    }
+    
+    return (meanMotion(obt) * maAtTa) + timeToPe.
+}
+
