@@ -160,23 +160,26 @@ function trueAnomalyFromMeanAnomaly {
     parameter M. // mean anomaly
     parameter e. // eccentricity
 
-    return M 
-        + (2*e - (0.25*e^3)) * sin(M) 
-        + (1.25*e^2) * sin(2*M) 
-        + ((13/12)*e^3) * sin(3*M).
-        // could add more terms for better accuracy, but probably not necessary
+    // return M 
+    //     + (2*e - (0.25*e^3)) * sin(M) 
+    //     + (1.25*e^2) * sin(2*M) 
+    //     + ((13/12)*e^3) * sin(3*M).
+    //     // could add more terms for better accuracy, but probably not necessary
+
+    return trueAnomalyFromEccentricAnomaly(eccentricAnomalyFromMeanAnomaly(M, e), e).
 }
 
 function meanAnomalyFromTrueAnomaly {
     parameter v. // true anomaly
     parameter e. // eccentricity
 
-    return v 
-        - 2*e*sin(v) 
-        + (0.75*e^2 + 0.125*e^4)*sin(2*v) 
-        - ((1/3)*e^3*sin(3*v))
-        + ((5/32)*e^4*sin(4*v)).
-        // could add more terms for better accuracy, but probably not necessary
+    // return v 
+    //     - 2*e*sin(v) 
+    //     + (0.75*e^2 + 0.125*e^4)*sin(2*v) 
+    //     - ((1/3)*e^3*sin(3*v))
+    //     + ((5/32)*e^4*sin(4*v)).
+    //     // could add more terms for better accuracy, but probably not necessary
+    return meanAnomalyFromEccentricAnomaly(eccentricAnomalyFromTrueAnomaly(v, e), e).
 }
 
 function radiusFromTrueAnomaly {
