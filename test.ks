@@ -20,36 +20,34 @@ if ship:status = "PRELAUNCH" {
 local tgt is Vessel("Space Station").
 set target to tgt.
 
-if (vAng(obtNormal(ship:obt:inclination, ship:obt:lan, body), obtNormal(tgt:obt:inclination, tgt:obt:lan, body)) > 0.1) {
+rcs on.
 
-    logStatus("Match inclination with target").
+local targetDock is tgt:partstagged("vessel dock")[0].
+local shipDock is ship:partstagged("vessel dock")[0].
 
-    addMatchInclinationNode(tgt).
-    executeNode().
-    wait 10.
+local vecToPort is vecDraw(
+    shipDock:nodePosition, 
+    targetDock:nodePosition,
+    RGB(0.5, 0.5, 0.5), "", 1.0, true, 0.1, true, true
+).
 
-    if ((abs(ship:obt:apoapsis - tgt:obt:periapsis) / ship:obt:apoapsis) > 0.01) {
-        addCircularizeNodeAtPe().
-        executeNode().
-        wait 10.
-    }
-}
+set vecToPort:startupdater to { return shipDock:nodePosition. }.
+set vecToPort:vecupdater to { return targetDock:nodePosition. }.
 
-until not hasNode { remove nextNode. wait 0. }
+local shipDockVec is vecDraw(
+    shipDock:nodePosition,
+    shipDock:portFacing:forevector,
+    RGB(1, 0, 0), "", 3.0, true, 0.1, true, true
+).
+set shipDockVec:startupdater to { return shipDock:nodePosition. }.
+set shipDockVec:vecupdater to { return shipDock:portFacing:forevector. }.
 
-logStatus("Computing Hohmann Transfer").
-addRendezvousTransferNode(tgt).
-executeNode().
-wait 10.
+local targetDockVec is vecDraw(
+    targetDock:nodePosition,
+    targetDock:portFacing:forevector,
+    RGB(0, 0, 1), "", 3.0, true, 0.1, true, true
+).
+set targetDockVec:startupdater to { return targetDock:nodePosition. }.
+set targetDockVec:vecupdater to { return targetDock:portFacing:forevector. }.
 
-logStatus("Matching Velocity at Closest Approach").
-addMatchVelocityAtClosestApproachNode(tgt).
-executeNode().
-wait 10.
-
-logStatus("Matching Velocity at Closest Approach Again").
-addMatchVelocityAtClosestApproachNode(tgt).
-executeNode().
-
-logStatus("Closing distance").
-closeDistanceToTarget(tgt, 100).
+logInfo("Dock/Ship Ang: " + vAng(targetDock:portFacing:forevector, shipDock:portFacing:forevector), 3).
