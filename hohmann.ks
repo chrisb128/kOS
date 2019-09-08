@@ -10,18 +10,18 @@ local function hohmannTargetAngle {
 }
 
 global function addHohmannTransferNode {
-    parameter targetBody.
+    parameter tgt.
 
-    local parentBody is targetBody:body.
+    local parentBody is tgt:body.
 
     if ship:body:name <> parentBody:name {
         PRINT "!!!! Ship not in orbit of target's parent !!!!" AT (0, terminal:height - 1).
         return.
     }
     
-    local xferR2 is targetBody:obt:semimajoraxis + targetBody:radius.
+    local xferR2 is tgt:obt:semimajoraxis.
     local xferDV is hohmannDV1(parentBody:mu, ship:obt:semimajoraxis, xferR2).
     local xferAngle is hohmannTargetAngle(ship:obt:semimajoraxis, xferR2).
-    local xferNodeTime is timeToRelativeAngle(targetBody, ship, parentBody, xferAngle).
+    local xferNodeTime is timeToRelativeAngle(tgt, ship, parentBody, xferAngle).
     add node(xferNodeTime, 0, 0, xferDV).
 }
