@@ -4,15 +4,19 @@ run once warp.
 global function executeNode {
     parameter doWarp is true.
     parameter warpLead is 10.
+    parameter splitNode is true.
 
     local theNode to nextNode.
-    local halfBurnTime is maneuverTime(theNode:deltav:mag/2).
+    local burnTimeToNode is maneuverTime(theNode:deltav:mag/2).
+    if not splitNode {
+        set burnTimeToNode to maneuverTime(theNode:deltav:mag).
+    }
     local nodeDir to theNode:deltav:vec.
 
     lock steering to nodeDir.
     wait until (vAng(nodeDir, ship:facing:vector) < 0.15 and ship:angularVel:mag < 0.05) or theNode:eta < 0.
     
-    local nodeTime is time:seconds + (theNode:eta - halfBurnTime - warpLead).
+    local nodeTime is time:seconds + (theNode:eta - burnTimeToNode - warpLead).
     if doWarp {
 
         until time:seconds > nodeTime {
@@ -32,7 +36,7 @@ global function executeNode {
     set nodeDir to theNode:deltav:vec.
     lock steering to nodeDir.
 
-    wait until theNode:eta < halfBurnTime.
+    wait until theNode:eta <= burnTimeToNode.
 
     local throttleLock to 0.
     lock throttle to throttleLock.
