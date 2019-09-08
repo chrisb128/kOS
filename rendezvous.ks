@@ -51,7 +51,7 @@ global function closeDistanceToTarget {
     wait until time:seconds >= kickStart + kickTime.
     lock throttle to 0.
 
-    local meetTime is time:seconds + currentDist / closeSpeed.    
+    local meetTime is time:seconds + currentDist / closeSpeed.
     local stopTime is maneuverTime(closeSpeed).
     local nodeTime is meetTime - stopTime.
 
@@ -59,15 +59,15 @@ global function closeDistanceToTarget {
     local shipVecAtNode is stateVectorsAtTime(ship:obt, nodeTime).
 
     add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1], false).
-    executeNode().
+    executeNode(true, 10, false).
     wait 1.
 
-    until abs((tgtVecAtNode[1] - shipVecAtNode[1]):mag) < 0.1 {
+    until abs((tgtVecAtNode[1] - shipVecAtNode[1]):mag) < 0.15 {
         
         set tgtVecAtNode to stateVectorsAtTime(tgt:obt, time:seconds).
         set shipVecAtNode to stateVectorsAtTime(ship:obt, time:seconds).
         add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1], false).
-        executeNode().
+        executeNode(true, 10, false).
         wait 1.
     }
 
