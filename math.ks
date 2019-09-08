@@ -139,7 +139,7 @@ function newtonSolver {
     parameter f.
     parameter df.
     parameter guess.
-    parameter d is 0.00001.
+    parameter d is 0.000001.
     parameter c is 30.
 
     local err is d + 1.
@@ -198,7 +198,7 @@ function eccentricAnomalyFromTrueAnomaly {
         return 2 * arctan( sqrt((1 - e)/(1 + e)) * tan(v / 2) ).
     } else {
         return 2 * atanh( sqrt((e - 1)/(e + 1)) * tan(v / 2) ).
-}
+    }
 }
 
 function trueAnomalyFromEccentricAnomaly {
@@ -297,6 +297,9 @@ function timeToTrueAnomaly {
 
     local maAtTa is meanAnomalyFromEccentricAnomaly(eccentricAnomalyFromTrueAnomaly(t, obt:eccentricity), obt:eccentricity).
     local ma is meanAnomalyAtTime(obt, time:seconds).
+    if (ma < 0) {
+        set ma to ma + 360.
+    }
     local timeToPe is 0.
     if (t < obt:trueAnomaly) {
         set timeToPe to (360 - ma) / meanMotion(obt).
@@ -316,3 +319,80 @@ function timeToTrueAnomaly {
  }
 
  
+function recursiveSolver {
+    parameter f.
+    parameter e.
+    parameter guess.
+    parameter d is 0.00000001.
+    parameter c is 30.
+
+    local err is d.
+    local x0 is guess.
+    for n in range(c + 1) {
+        if (n > 0 and abs(err) < d) { break. }
+        if (n >= c) { print "!!! SOLVER OVERRUN !!!" at (0, terminal:height - 2). break. }
+        
+        local x1 is f(x0).
+        set err to e(x1, x0).
+        set x0 to x1.
+    }
+
+    return x0.
+}
+
+function hillClimber {
+    parameter f.    
+    parameter x0.
+    parameter s0.
+    parameter sMin.
+    parameter c.
+
+    local d is 10^(s0-1).
+
+    local prevDir is 0.
+    local f0 is x0.
+
+    for n in range(c + 1) {
+        print n at (0, terminal:height - 1).
+        local f10 is f(f0 - d).
+        local f1 is f(f0).
+        local f11 is f(f0 + d).
+        
+        if (f10 < f1) {
+            set f0 to f0 - d.
+            if prevDir > 0 {
+                set s0 to s0 - 1.
+                set d to 10^s0.
+            }
+            set prevDir to -1.
+        } else if (f11 < f1) {
+            set f0 to f0 + d.
+            if prevDir < 0 {
+                set s0 to s0 - 1.
+                set d to 10^s0.
+            }
+            set prevDir to 1.
+        } else {
+            set s0 to s0 - 1.
+            set d to 10^s0.
+
+            if prevDir > 0 {
+                set f0 to f0 - d.
+                set prevDir to -1.
+            } else {
+                set f0 to f0 + d.
+                set prevDir to 1.
+            }
+        }
+
+        if s0 < sMin {
+            return f0.
+        }
+    }
+}
+
+global function distanceAtTime {
+    parameter t, o1, o2.
+
+    return (positionAt(o2, t) - positionAt(o1, t)):mag.
+}
