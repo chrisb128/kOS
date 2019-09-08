@@ -10,7 +10,7 @@ global function executeNode {
     local nodeDir to theNode:deltav:vec.
 
     lock steering to nodeDir.
-    wait until vAng(nodeDir, ship:facing:vector) < 0.15 and ship:angularVel:mag < 0.05.
+    wait until (vAng(nodeDir, ship:facing:vector) < 0.15 and ship:angularVel:mag < 0.05) or theNode:eta < 0.
     
     local nodeTime is time:seconds + (theNode:eta - halfBurnTime - warpLead).
     if doWarp {
