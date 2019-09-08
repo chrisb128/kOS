@@ -1,54 +1,75 @@
-run once hohmann.
 run once math.
-run once orbit.
-run once inclination.
-run once mission.
+run once vec.
+run once executenode.
 
-clearscreen.
+global function addMatchVelocityAtClosestApproachNode {
+    parameter tgt.
 
-if ship:status = "PRELAUNCH" {
-    runStep(launchToOrbit(121000, true, true, true, true, 5)).
-        
-    kuniverse:quicksave().
+    local function distanceToTargetAtTime {
+        parameter t.
 
-    logStatus("Waiting for next module").
-    wait 10.
-}
-
-local tgt is Vessel("Space Station").
-set target to tgt.
-
-if (vAng(obtNormal(ship:obt:inclination, ship:obt:lan, body), obtNormal(tgt:obt:inclination, tgt:obt:lan, body)) > 0.1) {
-
-    logStatus("Match inclination with target").
-
-    addMatchInclinationNode(tgt).
-    executeNode().
-    wait 10.
-
-    if ((abs(ship:obt:apoapsis - tgt:obt:periapsis) / ship:obt:apoapsis) > 0.01) {
-        addCircularizeNodeAtPe().
-        executeNode().
-        wait 10.
+        local sv0 is stateVectorsAtTime(ship:obt, t).
+        local tv0 is stateVectorsAtTime(tgt:obt, t).
+        return (tv0[0] - sv0[0]):mag.
     }
+
+    // first guess is near ship Ap
+    local travelTime is eta:apoapsis + time:seconds.
+    set travelTime to hillClimber({ parameter x. return distanceToTargetAtTime(x). }, travelTime, 2, -4, round(ship:obt:period)).
+
+    local shipVecAtTime is stateVectorsAtTime(ship:obt, travelTime).
+    local targetVecAtTime is stateVectorsAtTime(tgt:obt, travelTime).
+    local deltaV is targetVecAtTime[1] - shipVecAtTime[1].
+    add nodeFromVector(deltaV, travelTime, shipVecAtTime[0], shipVecAtTime[1], false).
 }
 
-until not hasNode { remove nextNode. wait 0. }
+global function closeDistanceToTarget {
+    parameter tgt.
+    parameter dist.
 
-// logStatus("Computing Hohmann Transfer").
-// addRendezvousTransferNode(tgt).
-// executeNode().
-// wait 10.
+    local closeSpeed is 30.
 
-// logStatus("Matching Velocity at Closest Approach").
-// addMatchVelocityAtClosestApproachNode(tgt).
-// executeNode().
-// wait 10.
+    lock currentDist to tgt:position:mag.
 
-// logStatus("Matching Velocity at Closest Approach Again").
-// addMatchVelocityAtClosestApproachNode(tgt).
-// executeNode().
+    if currentDist < 500 {
+        set closeSpeed to 10.
+    } else if currentDist < 50 {
+        set closeSpeed to 5.
+    } else if currentDist < 10 {
+        set closeSpeed to 1.
+    }
 
+    if currentDist <= dist { return. }
 
-logStatus("Closing distance").
-closeDistanceToTarget(tgt, 100).
+    lock steering to tgt:position:normalized.
+
+    wait until vAng(ship:facing:forevector, tgt:position) < 0.1.
+
+    local kickTime is maneuverTime(closeSpeed).
+    local kickStart is time:seconds.
+    lock throttle to 1.
+    wait until time:seconds >= kickStart + kickTime.
+    lock throttle to 0.
+
+    local meetTime is time:seconds + currentDist / closeSpeed.    
+    local stopTime is maneuverTime(closeSpeed).
+    local nodeTime is meetTime - stopTime.
+
+    local tgtVecAtNode is stateVectorsAtTime(tgt:obt, nodeTime).
+    local shipVecAtNode is stateVectorsAtTime(ship:obt, nodeTime).
+
+    add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1], false).
+    executeNode().
+    wait 1.
+
+    until abs((tgtVecAtNode[1] - shipVecAtNode[1]):mag) < 0.1 {
+        
+        set tgtVecAtNode to stateVectorsAtTime(tgt:obt, time:seconds).
+        set shipVecAtNode to stateVectorsAtTime(ship:obt, time:seconds).
+        add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1], false).
+        executeNode().
+        wait 1.
+    }
+
+    unlock currentDist.
+}

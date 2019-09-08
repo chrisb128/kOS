@@ -14,5 +14,5 @@ run "0:/common.ks".
 print "===  Done ===".
 
 print "=== CURRENT MISSION: RENDEZVOUS v0.1 ===".
-copypath("0:/rendezvous.ks", "").
+copypath("0:/test.ks", "").
 run rendezvous.
