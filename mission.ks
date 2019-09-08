@@ -210,7 +210,6 @@ global function transferToSatellite {
         logStatus("Circularizing").
         addCircularizeNodeAtPe().
         executeNode().
-
     }
 
     if (abs(args:targetAp - ship:apoapsis) > 2000) {
@@ -369,7 +368,7 @@ global function landSomewhere {
     hover(.70).
     wait until ship:verticalspeed < -0.4.
     hover().    
-    wait until ship:bounds:bottomaltradar < 0.25.
+    wait until ship:bounds:bottomaltradar < 1.
 
     lock throttle to 0.
     unlock all.
