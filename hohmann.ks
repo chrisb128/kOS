@@ -2,7 +2,7 @@ run once hohmannDv.
 run once math.
 
 // Compute required angle between source and destination in order to rendezvous at apoapsis
-local function hohmannTargetAngle {
+global function hohmannTargetAngle {
     parameter r1.
     parameter r2.
 
