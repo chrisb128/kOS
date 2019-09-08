@@ -164,6 +164,8 @@ global function transferToSatellite {
                 autoWarp(soiTime).
                 wait 10.
             }
+
+            set kUniverse:timeWarp:warp to 0.
         }
     } else {
         logStatus("!!!!! No encounter found !!!!!").
