@@ -21,6 +21,7 @@ local tgt is Vessel("Space Station").
 set target to tgt.
 
 rcs on.
+sas off.
 
 local targetDock is tgt:partstagged("vessel dock")[0].
 local shipDock is ship:partstagged("vessel dock")[0].
@@ -50,4 +51,19 @@ local targetDockVec is vecDraw(
 set targetDockVec:startupdater to { return targetDock:nodePosition. }.
 set targetDockVec:vecupdater to { return targetDock:portFacing:forevector. }.
 
-logInfo("Dock/Ship Ang: " + vAng(targetDock:portFacing:forevector, shipDock:portFacing:forevector), 3).
+unlock steering.
+local dockAxis is V(0,0,0)-targetDock:portFacing:forevector.
+lock steering to lookDirUp(dockAxis, ship:body:position).
+
+local dockAxisVec is vecDraw(
+    shipDock:nodePosition,
+    dockAxis,
+    RGB(0, 0, 1), "", 3.0, true, 0.1, true, true
+).
+set dockAxisVec:startupdater to { return shipDock:nodePosition. }.
+set dockAxisVec:vecupdater to { return dockAxis. }.
+
+wait until vAng(ship:facing:forevector, dockAxis) < 0.1.
+logInfo("Steering locked").
+
+wait 600.
