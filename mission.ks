@@ -112,20 +112,23 @@ global function zeroInclination {
 }
 
 global function matchInclination {
-    parameter args is lexicon("targetBody", mun).
-        
-    logStatus("Match inclination with target").
+    parameter tgt.
 
-    addMatchInclinationNode(args:targetBody).
-    executeNode().
-    wait 10.
-
-    if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.05) {
-        logStatus("Circularizing").
-        addCircularizeNodeAtPe().
+    local to is tgt:obt.
+    local so is ship:obt.
+    if vAng(obtNormal(to:inclination, to:lan, to:body), obtNormal(so:inclination, so:lan, so:body)) > 0.1 {
+        logStatus("Match inclination with target").
+        addMatchInclinationNode(tgt).
         executeNode().
+        wait 10.
+        
+        // assumes we started circular
+        if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.05) {
+            logStatus("Circularizing").
+            addCircularizeNodeAtPe().
+            executeNode().
+        }
     }
-
 }
 
 global function transferToSatellite {
@@ -385,4 +388,24 @@ global function landAt {
 
     // assume circular starting orbit
     // change inclination
+}
+
+global function autoRendezvous {
+    parameter tgt.
+
+    matchInclination(lexicon("targetBody", tgt)).
+
+    addRendezvousTransferNode(tgt).
+    executeNode().
+    wait 1.
+
+    addMatchVelocityAtClosestApproachNode(tgt).
+    executeNode().
+    wait 1.
+    
+    addMatchVelocityAtClosestApproachNode(tgt).
+    executeNode().
+    wait 1.
+
+    closeDistanceToTarget(tgt, 150).
 }
