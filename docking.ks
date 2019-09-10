@@ -5,6 +5,7 @@ global function autoDock {
     sas off.
 
     set target to targetDock.
+    local tgt is target:ship.
     local shipDock is ship:controlpart.
 
     local vecToPort is vecDraw(
@@ -49,7 +50,8 @@ global function autoDock {
     wait until vAng(ship:facing:forevector, shipTgtDir) < 0.1.
     logInfo("Steering locked").
 
-    if vDot(shipDock:portFacing:foreVector, shipTgtDir) < 0 {
+
+    if vDot(shipTgtDir, targetDock:nodePosition) < 0 {
         logStatus("!!!! ON WRONG SIDE !!!").
     }
 
@@ -80,7 +82,7 @@ global function autoDock {
         logInfo("Distance to dock axis: " + round(distanceToDockAxis, 2), 2).
         logInfo("Distance to dock plane: " + round(distanceToDockPlane, 2), 3).
 
-        local relVel is target:velocity:orbit - ship:velocity:orbit.
+        local relVel is tgt:velocity:orbit - ship:velocity:orbit.
         logInfo("Rel velocity: " + round(relVel:mag, 2) + "m/s", 4).
 
         local sf is ship:facing.
