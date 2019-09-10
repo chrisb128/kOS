@@ -403,9 +403,11 @@ global function autoRendezvous {
     executeNode().
     wait 1.
     
-    addMatchVelocityAtClosestApproachNode(tgt).
-    executeNode().
-    wait 1.
+    if (tgt:velocity:orbit - ship:velocity:orbit):mag > 0.5 {
+        addMatchVelocityAtClosestApproachNode(tgt).
+        executeNode().
+        wait 1.
+    }
 
     closeDistanceToTarget(tgt, 150).
 }
