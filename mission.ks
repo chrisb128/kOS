@@ -393,7 +393,7 @@ global function landAt {
 global function autoRendezvous {
     parameter tgt.
 
-    matchInclination(lexicon("targetBody", tgt)).
+    matchInclination(tgt).
 
     addRendezvousTransferNode(tgt).
     executeNode().

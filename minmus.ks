@@ -45,7 +45,7 @@ clearFields().
 
 if ship:orbit:body:name = parentBody:name {
 
-    matchInclination(lexicon("targetBody", targetBody)).
+    matchInclination(targetBody).
 
     logStatus("Waiting for next module").
     wait 10.
