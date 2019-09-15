@@ -124,6 +124,16 @@ global function matchInclination {
     }
 }
 
+global function warpToSoi {
+    logStatus("Warping to SOI").        
+    local soiTime is eta:transition + time:seconds.
+    until (time:seconds > soiTime) {
+        logInfo("Time to SOI: " + eta:transition, 1).
+        autoWarp(soiTime).
+        wait 10.
+    }
+}
+
 global function transferToSatellite {
     parameter args is lexicon("targetBody", mun, "targetAp", 30000, "autoWarpToSoi", true).
     
