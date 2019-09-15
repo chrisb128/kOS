@@ -334,7 +334,7 @@ function recursiveSolver {
     return x0.
 }
 
-function hillClimber {
+function steppedSearch {
     parameter f.    
     parameter x0.
     parameter s0.

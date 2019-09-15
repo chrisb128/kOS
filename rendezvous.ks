@@ -15,12 +15,12 @@ global function addMatchVelocityAtClosestApproachNode {
 
     // first guess is near ship Ap
     local travelTime is eta:apoapsis + time:seconds.
-    set travelTime to hillClimber({ parameter x. return distanceToTargetAtTime(x). }, travelTime, 2, -4, round(ship:obt:period)).
+    set travelTime to steppedSearch({ parameter x. return distanceToTargetAtTime(x). }, travelTime, 2, -4, round(ship:obt:period)).
 
     local shipVecAtTime is stateVectorsAtTime(ship:obt, travelTime).
     local targetVecAtTime is stateVectorsAtTime(tgt:obt, travelTime).
     local deltaV is targetVecAtTime[1] - shipVecAtTime[1].
-    add nodeFromVector(deltaV, travelTime, shipVecAtTime[0], shipVecAtTime[1], false).
+    add nodeFromVector(deltaV, travelTime, shipVecAtTime[0], shipVecAtTime[1]).
 }
 
 global function closeDistanceToTarget {
@@ -58,7 +58,7 @@ global function closeDistanceToTarget {
     local tgtVecAtNode is stateVectorsAtTime(tgt:obt, nodeTime).
     local shipVecAtNode is stateVectorsAtTime(ship:obt, nodeTime).
 
-    add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1], false).
+    add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1]).
     executeNode(true, 10, false).
     wait 1.
 
@@ -66,7 +66,7 @@ global function closeDistanceToTarget {
         
         set tgtVecAtNode to stateVectorsAtTime(tgt:obt, time:seconds).
         set shipVecAtNode to stateVectorsAtTime(ship:obt, time:seconds).
-        add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1], false).
+        add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1]).
         executeNode(true, 10, false).
         wait 1.
     }
