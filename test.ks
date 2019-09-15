@@ -1,29 +1,56 @@
 run once hohmann.
 run once math.
-run once orbit.
+run once draw.
 run once inclination.
 run once rendezvous.
 run once docking.
 run once mission.
+run once optimizers.
 
 clearscreen.
 
+until not hasNode {
+    remove nextNode.
+    wait 0.
+}
+
+local autoStage is true.
+
+local lastStage is time:seconds.
+on stageFlameout() {
+    if (autoStage) {
+        if (time:seconds > lastStage + 2) {
+            set lastStage to time:seconds.
+            stage.
+            wait 1.
+        }
+
+        preserve.
+    }
+}
+
 if ship:status = "PRELAUNCH" {
     runStep(launchToOrbit(121000, true, true, true, true, 5)).
-        
+    
     kuniverse:quicksave().
 
     logStatus("Waiting for next module").
     wait 10.
 }
 
-local tgt is Vessel("Space Station").
-set target to tgt.
+set autoStage to false.
 
-ship:partstagged("vessel dock")[0]:controlFrom().
+if (ship:obt:body:name <> minmus:name) {
 
-if tgt:position:mag > 500 {
-    autoRendezvous(tgt).
+    runStep(transferToSatellite(minmus, 30000)).
+
+    kuniverse:quicksave().
 }
 
-autoDock(tgt:partstagged("vessel dock")[0]).
+local tgt is vessel("Minmus Station").
+
+if tgt:position:mag > 5000 {
+    autoRendezvous(tgt).
+} else if tgt:position:mag > 1000 {
+    closeDistanceToTarget(tgt, 150).
+}
