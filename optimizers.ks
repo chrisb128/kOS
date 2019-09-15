@@ -59,14 +59,75 @@ global function steepestDescentHillClimb {
     }
 }
 
-global function vecToList {
-    parameter v.
+ 
+function recursiveSolver {
+    parameter f.
+    parameter e.
+    parameter guess.
+    parameter d is 0.00000001.
+    parameter c is 30.
 
-    return list(v:x, v:y, v:z).
+    local err is d.
+    local x0 is guess.
+    for n in range(c + 1) {
+        if (n > 0 and abs(err) < d) { break. }
+        if (n >= c) { print "!!! SOLVER OVERRUN !!!" at (0, terminal:height - 2). break. }
+        
+        local x1 is f(x0).
+        set err to e(x1, x0).
+        set x0 to x1.
+    }
+
+    return x0.
 }
 
-global function listToVec {
-    parameter l.
+function steppedSearch {
+    parameter f.    
+    parameter x0.
+    parameter s0.
+    parameter sMin.
+    parameter c.
 
-    return v(l[0], l[1], l[2]).
+    local d is 10^(s0-1).
+
+    local prevDir is 0.
+    local f0 is x0.
+
+    for n in range(c + 1) {
+        print n at (0, terminal:height - 1).
+        local f10 is f(f0 - d).
+        local f1 is f(f0).
+        local f11 is f(f0 + d).
+        
+        if (f10 < f1) {
+            set f0 to f0 - d.
+            if prevDir > 0 {
+                set s0 to s0 - 1.
+                set d to 10^s0.
+            }
+            set prevDir to -1.
+        } else if (f11 < f1) {
+            set f0 to f0 + d.
+            if prevDir < 0 {
+                set s0 to s0 - 1.
+                set d to 10^s0.
+            }
+            set prevDir to 1.
+        } else {
+            set s0 to s0 - 1.
+            set d to 10^s0.
+
+            if prevDir > 0 {
+                set f0 to f0 - d.
+                set prevDir to -1.
+            } else {
+                set f0 to f0 + d.
+                set prevDir to 1.
+            }
+        }
+
+        if s0 < sMin {
+            return f0.
+        }
+    }
 }
