@@ -148,7 +148,7 @@ global function transferToSatellite {
     parameter orbitAp is 30000.
 
     lexicon(
-        "action", { parameter args. _launchToOrbit(args). },
+        "action", { parameter args. _transferToSatellite(args). },
         "args", lexicon("targetBody", targetBody, "targetAp", orbitAp)
     ).
 }
