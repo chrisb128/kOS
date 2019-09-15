@@ -7,6 +7,16 @@ declare function inclinationDv {
     return 2 * v * sin( i / 2 ).
 }
 
+global function vecToRelativeAn {
+    parameter tgt.
+    local parentBody is tgt:body.
+    
+    local shipP to ship:position - parentBody:position.
+    local shipN is vcrs(ship:obt:velocity:orbit, shipP):normalized.
+    local tgtN is vcrs(tgt:obt:velocity:orbit, tgt:position - parentBody:position):normalized.
+    return vcrs(shipN, tgtN).
+}
+
 declare function addMatchInclinationNode {
     parameter targetBody.
 
@@ -21,9 +31,8 @@ declare function addMatchInclinationNode {
 
     local iChangeDv to -inclinationDv(ship:obt:velocity:orbit:mag, iChange).
     local halfBurnTime is maneuverTime(abs(iChangeDv) / 2).
-    local shipAngV to 360 / ship:obt:period.
+    local shipAngV to meanMotion(ship:obt).
 
-    
     local nodeAnomaly to angleBetween(shipP, intersectV).
     if (nodeAnomaly > 180) {
         // start with closest node
@@ -54,14 +63,14 @@ declare function addZeroInclinationNode {
 
     local iChangeDv to inclinationDv(ship:obt:velocity:orbit:mag, iChange).
     local halfBurnTime is maneuverTime(abs(iChangeDv) / 2).
-    local shipAngV to 360 / ship:obt:period.
+    local shipAngV to meanMotion(ship:obt).
 
     local shipP to ship:position - parentBody:position.
     local shipN is vcrs(ship:obt:velocity:orbit, shipP):normalized.
     local tgtN is parentBody:angularvel:normalized.
-    local intersectV is vcrs(shipN, tgtN).
+    local vecToAn is vcrs(shipN, tgtN).
     
-    local nodeAnomaly to angleBetween(shipP, intersectV).
+    local nodeAnomaly to angleBetween(shipP, vecToAn).
     if (nodeAnomaly > 180) {
         // start with closest node
         set nodeAnomaly to nodeAnomaly - 180.
