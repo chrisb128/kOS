@@ -135,7 +135,17 @@ global function warpToSoi {
 }
 
 global function transferToSatellite {
-    parameter args is lexicon("targetBody", mun, "targetAp", 30000, "autoWarpToSoi", true).
+    parameter targetBody is mun.
+    parameter orbitAp is 30000.
+
+    lexicon(
+        "action", { parameter args. _launchToOrbit(args). },
+        "args", lexicon("targetBody", targetBody, "targetAp", orbitAp)
+    ).
+}
+
+global function _transferToSatellite {
+    parameter args is lexicon("targetBody", mun, "targetAp", 30000).
     
     logStatus("Waiting to start transfer").
 
@@ -153,26 +163,16 @@ global function transferToSatellite {
         remove nextnode.
     }
     
-    logStatus("Computing Hohmann Transfer").
-    addHohmannTransferNode(targetBody).
-
-    logStatus("Executing Transfer").
+    logStatus("Executing transfer").
+    addRendezvousTransferNode(targetBody).
     executeNode().
     wait 10.
 
     if ship:orbit:hasNextPatch {
-        if args:autoWarpToSoi {
-            logStatus("Warping to SOI").
+        warpToSoi().
             
-            local soiTime is eta:transition + time:seconds.
-            until (time:seconds > soiTime) {
-                logInfo("Time to SOI: " + eta:transition, 1).
-                autoWarp(soiTime).
-                wait 10.
-            }
-
             set kUniverse:timeWarp:warp to 0.
-        }
+        
     } else {
         logStatus("!!!!! No encounter found !!!!!").
         return.
@@ -184,41 +184,23 @@ global function transferToSatellite {
         until ship:obt:body:name = targetBody:name {        
             logInfo("Time to SOI: " + eta:transition, 1).
             logInfo("Time now: " + time:seconds, 2).
-        }
+            wait 1.
     }
-
-    if ship:apoapsis < 0 {
-
-        local nt is time:seconds + 180. // now + 3 min    
-
-        local i is ship:obt:inclination.
-        if i > 90 {
-            set i to 180 - i.
         }
 
-        local Vt is trueAnomalyFromEccentricAnomaly(eccentricAnomalyFromMeanAnomaly(meanAnomalyAtTime(ship:obt, nt), ship:obt:eccentricity), ship:obt:eccentricity).
-        local w is clamp360(Vt + ship:obt:argumentOfPeriapsis).
-        local lan is ship:obt:lan.
-        local newPe is ship:body:radius + 30000.
-        local newPos is positionAt(ship, nt).
-        local newAp is (newPos - ship:body:position):mag.
-        local e is eFromApPe(newAp, newPe).
-        local sma is smaFromApPe(newAp, newPe).
-
-        local newVecs is stateVectorsAtTrueAnomaly(e, sma, w, lan, i, 180, ship:body).
-        local cVec is velocityAt(ship, nt):orbit.
-        local dVec is newVecs[1] - cVec.
-
-        logStatus("Capturing around target body").
-        add nodeFromVector(dVec, nt).
+    logStatus("Adjusting periapsis").
+    local nodeTime is time:seconds + 180.
+    addSetHyperbolicPeriapsisNode(args:targetAp, nodeTime).
         executeNode().
+    wait 10.
 
         logStatus("Circularizing").
         addCircularizeNodeAtPe().
         executeNode().
-    }
+    wait 10.
 
-    if (abs(args:targetAp - ship:apoapsis) > 2000) {
+    if (abs(args:targetAp - ship:apoapsis) > (args:targetAp * 0.05)) {
+
         logStatus("Moving to target Orbit").
         logInfo("- Changing Periapsis to target at Apoapsis").
         local dV1 is -hohmannDV2(targetBody:mu, args:targetAp + targetBody:radius, ship:obt:semimajoraxis).
@@ -226,15 +208,21 @@ global function transferToSatellite {
         add node(eta:apoapsis + time:seconds, 0, 0, dV1).
         executeNode().
         
+        if (abs(args:targetAp - ship:apoapsis) > abs(args:targetAp - ship:periapsis)) {
         logInfo("- Circularizing at Periapsis").
         addCircularizeNodeAtPe().
         executeNode().
     }
+        else if (abs(args:targetAp - ship:apoapsis) < abs(args:targetAp - ship:periapsis)) {
+            logInfo("- Circularizing at Apoapsis").
+            addCircularizeNodeAtAp().
+            executeNode().
+        }
+    }
 
-    if (abs(ship:obt:inclination) > 1) {        
+    if (abs(ship:obt:inclination) > 0.2) {        
         zeroInclination().
     }
-    
 }
 
 global function returnFromSatellite {
