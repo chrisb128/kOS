@@ -247,19 +247,15 @@ function vecToPe {
     parameter b is ship:obt:body.
 
     local n is obtNormal(i, lan, b).
-    local eqAxis is vecToAn(lan, b).
+    local eqAxis is vecToAn(lan).
     local majAxis is angleAxis(w, n) * eqAxis.
     return majAxis:normalized.
 }
 
 function vecToAn {
     parameter lan is ship:obt:lan.
-    parameter b is ship:obt:body.
 
-    local lanOff is b:rotationAngle.
-    local eqAxis is latlng(0, lan - lanOff):position - b:position.
-
-    return eqAxis:normalized.
+    return r(0,-lan,0) * solarPrimeVector:normalized.
 }
 
 function obtNormal {
@@ -267,11 +263,9 @@ function obtNormal {
     parameter lan is ship:obt:lan.
     parameter b is ship:obt:body.
 
-    local axis is vecToAn(lan, b).
-
-    local s is latlng(-90, 0):position - b:position.
-    local n is angleaxis(-i, axis) * s.
-    return n:normalized.
+    local an is vecToAn(lan).
+    LOCAL v IS angleAxis(-i,an) * vCrs(b:angularVel, an):normalized.
+    return -vCrs(v, an).
 }
 
 function smaFromApPe {
