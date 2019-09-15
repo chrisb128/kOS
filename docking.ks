@@ -67,11 +67,6 @@ global function autoDock {
         local vecToTgtDock is (targetDock:nodePosition - shipDock:nodePosition).
         set distanceToDockAxis to vCrs(shipTgtDir, vecToTgtDock):mag.
         
-        if ((vecToTgtDock:mag^2 - distanceToDockAxis^2) < 0) {
-            logStatus("!!! ON WRONG SIDE !!!").
-            break.
-        }
-
         set distanceToDockPlane to sqrt(vecToTgtDock:mag^2 - distanceToDockAxis^2).
         set steerLock to lookDirUp(shipTgtDir, targetDock:portFacing:upVector).
             
