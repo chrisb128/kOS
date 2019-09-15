@@ -37,3 +37,31 @@ global function drawOrbitVelocityVectors {
 
     return vecList.
 }
+
+global function drawStateVectors {
+    parameter vdList.
+    parameter vecList.
+    parameter b.
+
+    if (vdList:length = 0) {        
+        local vd0 to vecDraw(
+            V(0,0,0), V(0,0,0),
+            RGB(1,1,0), "",
+            1.0, true, 0.2, true, true
+        ).
+        set vd0:startupdater to { return b:position.}.
+        set vd0:vecupdater to { return vecList[0].}.
+        vdList:add(vd0).
+        
+        local vd1 to vecDraw(
+            V(0,0,0), V(0,0,0),
+            RGB(0,1,0), "",
+            100.0, true, 0.001, true, true
+        ).
+        set vd1:startupdater to { return vecList[0] + b:position.}.
+        set vd1:vecupdater to { return vecList[1].}.
+        vdList:add(vd1).
+    }
+
+    return vdList.
+}
