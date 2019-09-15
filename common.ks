@@ -18,3 +18,4 @@ copypath("0:/hohmannDv.ks", "").
 copypath("0:/hyperbolic.ks", "").
 copypath("0:/vec.ks", "").
 copypath("0:/draw.ks", "").
+copypath("0:/optimizers.ks", "").
