@@ -6,7 +6,9 @@ declare function addCircularizeNodeAtAp {
     local initV to sqrt( body:mu * ( (2/r) - (1/ship:orbit:semimajoraxis) ) ).
     local finalV to sqrt( body:mu * ( (2/r) - (1/r) ) ).
 
-    add node(time:seconds + eta:apoapsis, 0, 0, finalV - initV).
+    local n is node(time:seconds + eta:apoapsis, 0, 0, finalV - initV).
+    add n.
+    return n.
 }
 
 declare function addCircularizeNodeAtPe {
@@ -17,5 +19,7 @@ declare function addCircularizeNodeAtPe {
     local initV to sqrt( body:mu * ( (2/r) - (1/ship:orbit:semimajoraxis) ) ).
     local finalV to sqrt( body:mu * ( (2/r) - (1/r) ) ).
 
-    add node(time:seconds + eta:periapsis, 0, 0, finalV - initV).
+    local n is node(time:seconds + eta:periapsis, 0, 0, finalV - initV).
+    add n.
+    return n.
 }
