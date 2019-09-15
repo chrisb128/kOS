@@ -1,10 +1,13 @@
 run once ascent.
-run once circularize.
+run once maneuvers.
 run once executenode.
 run once logging.
 run once time.
 run once hohmann.
+run once inclination.
 run once vec.
+run once draw.
+run once optimizers.
 
 declare function executeSequence {
     parameter l.
@@ -88,6 +91,12 @@ local function _launchToOrbit {
     addCircularizeNodeAtAp().
     executeNode().
 
+    
+    if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.025) {
+        logStatus("Recircularizing").
+        addCircularizeNodeAtAp().
+        executeNode().
+    }
 }
 
 global function zeroInclination {        
@@ -97,8 +106,8 @@ global function zeroInclination {
     executeNode().
     wait 10.
 
-    if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.05) {
-        logStatus("Circularizing").
+    if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.025) {
+        logStatus("Recircularizing").
         addCircularizeNodeAtPe().
         executeNode().
     }
@@ -170,8 +179,8 @@ global function _transferToSatellite {
 
     if ship:orbit:hasNextPatch {
         warpToSoi().
-            
-            set kUniverse:timeWarp:warp to 0.
+
+        set kUniverse:timeWarp:warp to 0.
         
     } else {
         logStatus("!!!!! No encounter found !!!!!").
@@ -185,18 +194,18 @@ global function _transferToSatellite {
             logInfo("Time to SOI: " + eta:transition, 1).
             logInfo("Time now: " + time:seconds, 2).
             wait 1.
-    }
         }
-
+    }
+    
     logStatus("Adjusting periapsis").
     local nodeTime is time:seconds + 180.
     addSetHyperbolicPeriapsisNode(args:targetAp, nodeTime).
-        executeNode().
+    executeNode().
     wait 10.
 
-        logStatus("Circularizing").
-        addCircularizeNodeAtPe().
-        executeNode().
+    logStatus("Circularizing").
+    addCircularizeNodeAtPe().
+    executeNode().
     wait 10.
 
     if (abs(args:targetAp - ship:apoapsis) > (args:targetAp * 0.05)) {
@@ -209,10 +218,10 @@ global function _transferToSatellite {
         executeNode().
         
         if (abs(args:targetAp - ship:apoapsis) > abs(args:targetAp - ship:periapsis)) {
-        logInfo("- Circularizing at Periapsis").
-        addCircularizeNodeAtPe().
-        executeNode().
-    }
+            logInfo("- Circularizing at Periapsis").
+            addCircularizeNodeAtPe().        
+            executeNode().
+        }
         else if (abs(args:targetAp - ship:apoapsis) < abs(args:targetAp - ship:periapsis)) {
             logInfo("- Circularizing at Apoapsis").
             addCircularizeNodeAtAp().
@@ -376,7 +385,6 @@ global function landSomewhere {
 }
 
 global function landAt {
-
     // assume circular starting orbit
     // change inclination
 }
