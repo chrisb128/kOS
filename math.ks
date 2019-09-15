@@ -390,3 +390,11 @@ global function distanceAtTime {
 
     return (positionAt(o2, t) - positionAt(o1, t)):mag.
 }
+
+global function trueAnomaliesWithRadius {
+    //returns a list of the true anomalies of the 2 points where the craft's orbit passes the given altitude
+	parameter sma,ecc,b,r.
+	local rad is r + b:radius.
+	local taWithR is arcCos((-sma * ecc^2 + sma - rad) / (ecc * rad)).
+	return list(taWithR,360-taWithR).//first true anomaly will be as orbit goes from PE to AP
+}
