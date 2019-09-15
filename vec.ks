@@ -95,11 +95,8 @@ global function nodeFromVector {
   parameter t.
   parameter s_pos.
   parameter s_vel.
-  parameter invNorm is false.
 
-  local s_nrm is vCrs(s_vel, s_pos).
-  
-  if invNorm { set s_nrm to V(0,0,0)-s_nrm. }.
+  local s_nrm is -vCrs(s_vel, s_pos).
   local s_rad is vCrs(s_nrm, s_vel).
 
   local pro is vDot(vec,s_vel:normalized).
