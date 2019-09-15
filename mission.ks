@@ -45,13 +45,6 @@ local function _launchToOrbit {
     logStatus("Counting down").
     countdown(args:countdown).
 
-    if args:autoStage {
-        on stageFlameout() {
-            stage.
-            wait 1.
-        }
-    }
-
     ascent(args:targetAp).
 
     logStatus("Out of atmosphere").
