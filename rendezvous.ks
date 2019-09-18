@@ -1,6 +1,7 @@
 run once math.
 run once vec.
 run once executenode.
+run once optimizers.
 
 global function addMatchVelocityAtClosestApproachNode {
     parameter tgt.
@@ -13,14 +14,20 @@ global function addMatchVelocityAtClosestApproachNode {
         return (tv0[0] - sv0[0]):mag.
     }
 
-    // first guess is near ship Ap
-    local travelTime is eta:apoapsis + time:seconds.
-    set travelTime to steppedSearch({ parameter x. return distanceToTargetAtTime(x). }, travelTime, 2, -4, round(ship:obt:period)).
+    local intersectTime is eta:apoapsis + time:seconds.
+    set intersectTime to steepestDescentHillClimb(
+        { parameter x. return distanceToTargetAtTime(x[0]). }, 
+        list(intersectTime),
+        list(1),
+        0.1
+    )[0].
 
-    local shipVecAtTime is stateVectorsAtTime(ship:obt, travelTime).
-    local targetVecAtTime is stateVectorsAtTime(tgt:obt, travelTime).
+    local shipVecAtTime is stateVectorsAtTime(ship:obt, intersectTime).
+    local targetVecAtTime is stateVectorsAtTime(tgt:obt, intersectTime).
     local deltaV is targetVecAtTime[1] - shipVecAtTime[1].
-    add nodeFromVector(deltaV, travelTime, shipVecAtTime[0], shipVecAtTime[1]).
+    local n is nodeFromVector(deltaV, intersectTime, shipVecAtTime[0], shipVecAtTime[1]).
+    add n.
+    return n.
 }
 
 global function closeDistanceToTarget {
@@ -31,12 +38,12 @@ global function closeDistanceToTarget {
 
     lock currentDist to tgt:position:mag.
 
-    if currentDist < 500 {
+    if currentDist < 1000 {
         set closeSpeed to 10.
-    } else if currentDist < 50 {
-        set closeSpeed to 5.
-    } else if currentDist < 10 {
+    } else if currentDist < 100 {
         set closeSpeed to 1.
+    } else if currentDist < 60 {
+        set closeSpeed to 0.
     }
 
     if currentDist <= dist { return. }
@@ -51,7 +58,7 @@ global function closeDistanceToTarget {
     wait until time:seconds >= kickStart + kickTime.
     lock throttle to 0.
 
-    local meetTime is time:seconds + currentDist / closeSpeed.
+    local meetTime is time:seconds + ((currentDist - dist) / closeSpeed).
     local stopTime is maneuverTime(closeSpeed).
     local nodeTime is meetTime - stopTime.
 
@@ -62,13 +69,21 @@ global function closeDistanceToTarget {
     executeNode(true, 10, false).
     wait 1.
 
-    until abs((tgtVecAtNode[1] - shipVecAtNode[1]):mag) < 0.15 {
+    set tgtVecAtNode to stateVectorsAtTime(tgt:obt, time:seconds).
+    set shipVecAtNode to stateVectorsAtTime(ship:obt, time:seconds).
+
+    until abs((tgtVecAtNode[1] - shipVecAtNode[1]):mag) < 0.25 {
         
-        set tgtVecAtNode to stateVectorsAtTime(tgt:obt, time:seconds).
-        set shipVecAtNode to stateVectorsAtTime(ship:obt, time:seconds).
         add nodeFromVector(tgtVecAtNode[1] - shipVecAtNode[1], nodeTime, shipVecAtNode[0], shipVecAtNode[1]).
         executeNode(true, 10, false).
         wait 1.
+        
+        set tgtVecAtNode to stateVectorsAtTime(tgt:obt, time:seconds).
+        set shipVecAtNode to stateVectorsAtTime(ship:obt, time:seconds).
+        
+        if (abs((tgtVecAtNode[1] - shipVecAtNode[1]):mag) < 0.25) {
+            break.
+        }
     }
 
     unlock currentDist.
