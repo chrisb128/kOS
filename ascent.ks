@@ -21,7 +21,7 @@ declare function ascent {
     local function ascentCurve {
         parameter p.
 
-        local s is (p + 0.08) * 9.
+        local s is (p + 0.06) * 14.
         return 1 - p ^ (1 / s).
     }
 
