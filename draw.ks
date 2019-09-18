@@ -42,11 +42,12 @@ global function drawStateVectors {
     parameter vdList.
     parameter vecList.
     parameter b.
+    parameter color is RGB(1,1,0).
 
     if (vdList:length = 0) {        
         local vd0 to vecDraw(
             V(0,0,0), V(0,0,0),
-            RGB(1,1,0), "",
+            color, "",
             1.0, true, 0.2, true, true
         ).
         set vd0:startupdater to { return b:position.}.
@@ -55,7 +56,7 @@ global function drawStateVectors {
         
         local vd1 to vecDraw(
             V(0,0,0), V(0,0,0),
-            RGB(0,1,0), "",
+            color, "",
             100.0, true, 0.001, true, true
         ).
         set vd1:startupdater to { return vecList[0] + b:position.}.
