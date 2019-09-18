@@ -3,7 +3,7 @@ run once math.
 global function stateVectorsAtTime {
     parameter o is ship:obt.
     parameter t is time:seconds.
-
+    
     local e is o:eccentricity.
     local sma is o:semimajoraxis.
     local w is o:argumentOfPeriapsis.
@@ -24,8 +24,12 @@ global function stateVectorsAtMeanAnomaly {
     parameter Mt.
     parameter b.
 
-    local Et is eccentricAnomalyFromMeanAnomaly(Mt, e).   
+    local Et is eccentricAnomalyFromMeanAnomaly(Mt, e).
     local Vt is trueAnomalyFromEccentricAnomaly(Et, e).
+
+    until Vt >= 0 {
+        set Vt to Vt + 360.
+    }
     
     return stateVectorsAtTrueAnomaly(e, sma, w, lan, i, Vt, b).
 }
@@ -96,7 +100,7 @@ global function nodeFromVector {
   parameter s_pos.
   parameter s_vel.
 
-  local s_nrm is -vCrs(s_vel, s_pos).
+  local s_nrm is vCrs(s_vel, s_pos).
   local s_rad is vCrs(s_nrm, s_vel).
 
   local pro is vDot(vec,s_vel:normalized).

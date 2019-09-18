@@ -53,25 +53,47 @@ global function steepestDescentHillClimb {
 
         set n to n + 1.
         if n > maxN {
-            print "!!! SOLVER OVERRUN !!!" at (0, terminal:height - 1).
+            print "!!! HILL CLIMBER OVERRUN !!!" at (0, terminal:height - 1).
             return nextPoint.
         }
     }
 }
 
- 
+
+function newtonSolver {
+    parameter f.
+    parameter df.
+    parameter guess.
+    parameter d is 0.000001.
+    parameter c is 100.
+
+    local err is d + 1.
+    local x0 is guess.
+    for n in range(c + 1) {
+        if (abs(err) <= d) { break. }
+        if (n >= c) { print "!!! NEWTON SOLVER OVERRUN !!!" at (0, terminal:height - 2). break. }
+
+        local x1 is x0 - f(x0)/df(x0).
+        set err to x1 - x0.
+        set x0 to x1.
+    }
+
+    return x0.
+}
+
+
 function recursiveSolver {
     parameter f.
     parameter e.
     parameter guess.
     parameter d is 0.00000001.
-    parameter c is 30.
+    parameter c is 10000.
 
     local err is d.
     local x0 is guess.
     for n in range(c + 1) {
         if (n > 0 and abs(err) < d) { break. }
-        if (n >= c) { print "!!! SOLVER OVERRUN !!!" at (0, terminal:height - 2). break. }
+        if (n >= c) { print "!!! RECURSIVE SOLVER OVERRUN !!!" at (0, terminal:height - 3). break. }
         
         local x1 is f(x0).
         set err to e(x1, x0).

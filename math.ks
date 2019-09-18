@@ -1,4 +1,5 @@
 run once "list.ks".
+run once optimizers.
 run once hyperbolic.
 
 declare function angleBetween {
@@ -12,37 +13,6 @@ declare function angleBetween {
     }
 
     return ang.
-}
-
-declare function timeToRelativeAngle {
-    local parameter tgt.
-    local parameter src.
-    local parameter org.
-    local parameter angle.
-    
-    local dW TO relativeAngVel(tgt, src).
-    
-    local t is time:seconds.
-    local currentAngle is angleBetween(tgt:orbit:position - org:position, src:orbit:position - org:position).
-    local angleToWait to (angle - currentAngle).
-
-    if (dW < 0) {
-        set angleToWait to 360 - angleToWait.
-    }
-
-    if (angleToWait < 0) {
-        set angleToWait to angleToWait + 360.
-    }
-
-    return angleToWait / dW + t.
-}
-
-declare function relativeAngVel {
-    local parameter a.
-    local parameter b.
-    local wA TO 360 / a:orbit:period.
-    local wB TO 360 / b:orbit:period.
-    return wB - wA.
 }
 
 declare function maneuverTime {
@@ -98,147 +68,6 @@ function clamp360 {
     return (t - floor(t)) * 360.0.
 }
 
-function meanAnomalyFromEccentricAnomaly {
-    parameter E.
-    parameter ec.
-
-    if ec < 1 {
-        return E + ec * constant:radtodeg * sin(E).
-    } else {
-        return E + ec * constant:radtodeg * sinh(E).
-    }
-}
-
-function eccentricAnomalyFromMeanAnomaly {
-    parameter M. // mean anomaly
-    parameter ec. // eccentricity
-
-    local E is 0.
-    set M to clamp360(M).
-
-    if (ec < 0.8) { set E to M. } 
-    else { set E to 180. }
-
-    if ec < 1 {    
-        return newtonSolver(
-            { parameter x. return x - ec * constant:radtodeg * sin(x) - M. },
-            { parameter x. return -ec * constant:radtodeg * cos(x) + 1. },
-            E
-        ).
-    } else {
-        // hopefully a good guess
-        return newtonSolver(
-            { parameter x. return ec * constant:radtodeg * sinh(x) - x - M. },
-            { parameter x. return ec * constant:radtodeg * cosh(x) - 1. },
-            E
-        ).
-    }
-}
-
-function newtonSolver {
-    parameter f.
-    parameter df.
-    parameter guess.
-    parameter d is 0.000001.
-    parameter c is 30.
-
-    local err is d + 1.
-    local x0 is guess.
-    for n in range(c + 1) {
-        if (abs(err) <= d) { break. }
-        if (n >= c) { print "!!! SOLVER OVERRUN !!!" at (0, terminal:height - 2). break. }
-
-        local x1 is x0 - f(x0)/df(x0).
-        set err to x1 - x0.
-        set x0 to x1.
-    }
-
-    return x0.
-}
-
-function trueAnomalyFromMeanAnomaly {
-    parameter M. // mean anomaly
-    parameter e. // eccentricity
-
-    // return M 
-    //     + (2*e - (0.25*e^3)) * sin(M) 
-    //     + (1.25*e^2) * sin(2*M) 
-    //     + ((13/12)*e^3) * sin(3*M).
-    //     // could add more terms for better accuracy, but probably not necessary
-
-    return trueAnomalyFromEccentricAnomaly(eccentricAnomalyFromMeanAnomaly(M, e), e).
-}
-
-function meanAnomalyFromTrueAnomaly {
-    parameter v. // true anomaly
-    parameter e. // eccentricity
-
-    // return v 
-    //     - 2*e*sin(v) 
-    //     + (0.75*e^2 + 0.125*e^4)*sin(2*v) 
-    //     - ((1/3)*e^3*sin(3*v))
-    //     + ((5/32)*e^4*sin(4*v)).
-    //     // could add more terms for better accuracy, but probably not necessary
-    return meanAnomalyFromEccentricAnomaly(eccentricAnomalyFromTrueAnomaly(v, e), e).
-}
-
-function radiusFromTrueAnomaly {
-    parameter v. // true anomaly
-    parameter e. // eccentricity
-    parameter a. // semi-major axis
-
-    return a * ( (1-e^2) / ( 1+(e*cos(v)) ) ).
-}
-
-function eccentricAnomalyFromTrueAnomaly {
-    parameter v. // true anomaly
-    parameter e. // eccentricity
-
-    if (e < 1) {
-        return 2 * arctan( sqrt((1 - e)/(1 + e)) * tan(v / 2) ).
-    } else {
-        return 2 * atanh( sqrt((e - 1)/(e + 1)) * tan(v / 2) ).
-    }
-}
-
-function trueAnomalyFromEccentricAnomaly {
-    parameter Et. // eccentric anomaly
-    parameter e.  // eccentricity
-
-    if (e < 1) {
-        return 2 * arctan(sqrt((1 + e)/(1 - e)) * tan(Et / 2)).
-    } else {
-        return 2 * arctan(sqrt((e + 1)/(e - 1)) * tanh(Et / 2)).
-    }
-}
-
-function meanMotion {
-    parameter obt.
-    return meanMotionK(obt:body:mu, obt:semimajoraxis).
-}
-
-function meanMotionK {
-    parameter mu.
-    parameter a.
-    return sqrt(mu/abs(a)^3)*constant:radtodeg.
-}
-
-function meanAnomalyAtTime {
-    parameter obt.
-    parameter t.
-
-    local dt is t - obt:epoch.
-    local n is meanMotion(obt).
-    local Mt is obt:meanAnomalyAtEpoch + (n * dt).
-    
-    return clamp360(Mt).
-}
-
-function  trueAnomalyAtTime {
-    parameter obt.
-    parameter t.
-    return trueAnomalyFromMeanAnomaly(meanAnomalyAtTime(obt, t), obt:eccentricity).
-}
 
 function vecToPe {
     parameter i is ship:obt:inclination.
@@ -285,43 +114,8 @@ function eFromApPe {
     return sqrt(1 - (b^2/a^2)).
 }
 
-function timeToTrueAnomaly {
-    parameter obt.
-    parameter t.
-
-    local maAtTa is meanAnomalyFromEccentricAnomaly(eccentricAnomalyFromTrueAnomaly(t, obt:eccentricity), obt:eccentricity).
-    local ma is meanAnomalyAtTime(obt, time:seconds).
-    if (ma < 0) {
-        set ma to ma + 360.
-    }
-    local timeToPe is 0.
-    if (t < obt:trueAnomaly) {
-        set timeToPe to (360 - ma) / meanMotion(obt).
-    } else {
-        set timeToPe to -ma / meanMotion(obt).
-    }
-    
-    return (meanMotion(obt) * maAtTa) + timeToPe.
-}
-
- function velocityAtR {
-     parameter r.
-     parameter mu.
-     parameter sma.
-
-    return sqrt(mu * ( (2/r) - (1/sma))).
- }
-
 global function distanceAtTime {
     parameter t, o1, o2.
 
     return (positionAt(o2, t) - positionAt(o1, t)):mag.
-}
-
-global function trueAnomaliesWithRadius {
-    //returns a list of the true anomalies of the 2 points where the craft's orbit passes the given altitude
-	parameter sma,ecc,b,r.
-	local rad is r + b:radius.
-	local taWithR is arcCos((-sma * ecc^2 + sma - rad) / (ecc * rad)).
-	return list(taWithR,360-taWithR).//first true anomaly will be as orbit goes from PE to AP
 }

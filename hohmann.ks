@@ -1,7 +1,39 @@
 run once hohmannDv.
 run once math.
+run once orbits.
 run once vec.
+run once optimizers.
 
+declare function timeToRelativeAngle {
+    local parameter tgt.
+    local parameter src.
+    local parameter org.
+    local parameter angle.
+    
+    local dW TO relativeAngVel(tgt, src).
+    
+    local t is time:seconds.
+    local currentAngle is angleBetween(tgt:orbit:position - org:position, src:orbit:position - org:position).
+    local angleToWait to (angle - currentAngle).
+
+    if (dW < 0) {
+        set angleToWait to 360 - angleToWait.
+    }
+
+    if (angleToWait < 0) {
+        set angleToWait to angleToWait + 360.
+    }
+
+    return angleToWait / dW + t.
+}
+
+declare function relativeAngVel {
+    local parameter a.
+    local parameter b.
+    local wA TO meanMotion(a:obt).
+    local wB TO meanMotion(b:obt).
+    return wB - wA.
+}
 // Compute required angle between source and destination in order to rendezvous at apoapsis
 global function hohmannTargetAngle {
     parameter r1.
@@ -16,41 +48,56 @@ global function addRendezvousTransferNode {
     local to is tgt:obt.
     local so is ship:obt.
     local b is ship:body.
-    
-    local function iterateXferOrbit {
-        parameter o. // transfer orbit info lexicon
+            
+    local xferMm to meanMotionK(b:mu, (so:semimajoraxis + to:semimajoraxis) / 2).
+    local travelTime to 180 / xferMm.
+    local tgtMm is meanMotion(to).
+    local tgtAngle is clamp360(travelTime * tgtMm + 180).
+    set nodeTime to timeToRelativeAngle(tgt, ship, b, tgtAngle).
 
-        local xferMm to meanMotionK(b:mu, o:sma).
-        local travelTime to 180 / xferMm.
+    local function getTransferParamsForNodeTime {
+        parameter nt.
 
-        local tgtMm is meanMotion(to).
-        local tgtAngle is clamp360(travelTime * tgtMm + 180).
+        local shipTaAtNodeTime is trueAnomalyAtTime(so, nt).
+        local tgtTaAtXferAp is clamp360(((shipTaAtNodeTime + 180) + (so:argumentOfPeriapsis + so:lan)) - (to:argumentOfPeriapsis + to:lan)).
 
-        set o:nt to timeToRelativeAngle(tgt, ship, b, tgtAngle).
-
-        local shipTaAtNodeTime is trueAnomalyAtTime(so, o:nt).
+        local xferW is (shipTaAtNodeTime + so:argumentOfPeriapsis + so:lan) - so:lan.
         local xferRPe to radiusFromTrueAnomaly(shipTaAtNodeTime, so:eccentricity, so:semimajoraxis).
+        local xferRAp to radiusFromTrueAnomaly(tgtTaAtXferAp, to:eccentricity, to:semimajoraxis).
+        local xferSma is smaFromApPe(xferRAp, xferRPe).
+        local xferE is eFromApPe(xferRAp, xferRPe).
 
-        local tgtTa to trueAnomalyAtTime(to, o:nt + travelTime).
-        local tgtRAp to radiusFromTrueAnomaly(tgtTa, to:eccentricity, to:semimajoraxis).
-
-        set o:e to eFromApPe(tgtRAp, xferRPe).
-        set o:w to clamp360((shipTaAtNodeTime + so:argumentOfPeriapsis + so:lan) - to:lan).
-        set o:sma to smaFromApPe(tgtRAp, xferRPe).
-
-        return o.
+        return lexicon(
+            "e", xferE,
+            "sma", xferSma,
+            "w", xferW
+        ).
     }
 
-    local xfer to recursiveSolver(
-        { parameter x. return iterateXferOrbit(x). },
-        { parameter x. parameter y. return x:sma - y:sma. },
-        lexicon("sma", smaFromApPe(to:apoapsis + b:radius, so:periapsis + b:radius),
-                "e", eFromApPe(to:apoapsis + b:radius, so:periapsis),
-                "w", 0,
-                "nt", 0)
-    ).
+    local function interceptDistance {
+        parameter nt.
 
-    set shipTaAtNodeTime to trueAnomalyAtTime(so, xfer:nt).
+        local xfer is getTransferParamsForNodeTime(nt).
+
+        local xferMm is meanMotionK(b:mu, xfer:sma).
+        local travelTime is 180 / xferMm.
+
+        local tgtTaAtShipXferApTime is trueAnomalyAtTime(to, nt + travelTime).
+        
+        local xferVecAtAp is stateVectorsAtTrueAnomaly(xfer:e, xfer:sma, xfer:w, to:lan, to:inclination, 180, b).
+        local tgtVecAtShipXferAp is stateVectorsAtTrueAnomaly(to:eccentricity, to:semimajoraxis, to:argumentofperiapsis, to:lan, to:inclination, tgtTaAtShipXferApTime, b).
+
+        return (xferVecAtAp[0] - tgtVecAtShipXferAp[0]):mag.
+    }
+
+    set nodeTime to steepestDescentHillClimb(
+        { parameter x. return interceptDistance(x[0]). },
+        list(nodeTime),
+        list(1)
+    )[0].
+
+    local xfer is getTransferParamsForNodeTime(nodeTime).
+    local shipTaAtNodeTime is trueAnomalyAtTime(so, nodeTime).
 
     // vectors for simulated transfer orbit
     local xferVecAtPe is stateVectorsAtTrueAnomaly(xfer:e, xfer:sma, xfer:w, to:lan, to:inclination, 0, b).
@@ -59,5 +106,5 @@ global function addRendezvousTransferNode {
     // delta-v vector
     local dVec is xferVecAtPe[1] - shipVecAtXferPe[1].
     
-    add nodeFromVector(dVec, xfer:nt, shipVecAtXferPe[0], shipVecAtXferPe[1]).
+    add nodeFromVector(dVec, nodeTime, shipVecAtXferPe[0], shipVecAtXferPe[1]).
 }
