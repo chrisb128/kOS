@@ -8,6 +8,7 @@ run once inclination.
 run once vec.
 run once draw.
 run once optimizers.
+run once hoverslam.
 
 declare function executeSequence {
     parameter l.
@@ -118,7 +119,7 @@ global function matchInclination {
 
     local to is tgt:obt.
     local so is ship:obt.
-    if vAng(obtNormal(to:inclination, to:lan, to:body), obtNormal(so:inclination, so:lan, so:body)) > 0.1 {
+    until vAng(obtNormal(to:inclination, to:lan, to:body), obtNormal(so:inclination, so:lan, so:body)) < 0.1 {
         logStatus("Match inclination with target").
         addMatchInclinationNode(tgt).
         executeNode().
@@ -129,6 +130,7 @@ global function matchInclination {
             logStatus("Circularizing").
             addCircularizeNodeAtPe().
             executeNode().
+            wait 1.
         }
     }
 }
@@ -147,7 +149,7 @@ global function transferToSatellite {
     parameter targetBody is mun.
     parameter orbitAp is 30000.
 
-    lexicon(
+    return lexicon(
         "action", { parameter args. _transferToSatellite(args). },
         "args", lexicon("targetBody", targetBody, "targetAp", orbitAp)
     ).
@@ -167,6 +169,9 @@ global function _transferToSatellite {
         return.
     }
 
+    logStatus("Matching inclination").
+    matchInclination(targetBody).
+    
     logStatus("Clearing all maneuver nodes").
     until not hasnode {
         remove nextnode.
@@ -392,21 +397,25 @@ global function landAt {
 global function autoRendezvous {
     parameter tgt.
 
-    matchInclination(tgt).
+    set target to tgt.
 
+    matchInclination(tgt).
+    
     addRendezvousTransferNode(tgt).
     executeNode().
     wait 1.
 
     addMatchVelocityAtClosestApproachNode(tgt).
-    executeNode().
+    executeNode(true, 10, false).
     wait 1.
     
     if (tgt:velocity:orbit - ship:velocity:orbit):mag > 0.5 {
         addMatchVelocityAtClosestApproachNode(tgt).
-        executeNode().
+        executeNode(true, 10, false).
         wait 1.
     }
 
-    closeDistanceToTarget(tgt, 150).
+    if (tgt:position:mag > 500) {
+        closeDistanceToTarget(tgt, 150).
+    }
 }
