@@ -26,7 +26,7 @@ declare function ascent {
     }
 
     until ship:apoapsis > targetAp {
-        local limitedThrottle is min(20 / (ship:availableThrust / ship:mass), 1).
+        local limitedThrottle is min(15 / (ship:availableThrust / ship:mass), 1).
         
         if ship:altitude > ship:body:atm:height * 0.35 {
             set limitedThrottle to 1.
