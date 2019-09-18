@@ -1,3 +1,6 @@
+run once math.
+run once vec.
+
 declare function addCircularizeNodeAtAp {
     
     local body to ship:orbit:body.
@@ -45,7 +48,10 @@ global function addSetHyperbolicPeriapsisNode {
     local no_sma is ( no_rp / (1 - so_e) ).
     set ta to trueAnomaliesWithRadius(no_sma, so_e, b, rAtNodeTime)[1].
     local newVecsAtNodeTime is stateVectorsAtTrueAnomaly(so_e, no_sma, so_w, so_lan, so_i, ta, b).
-    local ang is -vAng(vecsAtNodeTime[0], newVecsAtNodeTime[0]).
+    local ang is vAng(vecsAtNodeTime[0], newVecsAtNodeTime[0]).
+    if targetPe > ship:periapsis {
+        set ang to -ang.
+    }
     local no_w is so_w + ang.
     set newVecsAtNodeTime to stateVectorsAtTrueAnomaly(so_e, no_sma, no_w, so_lan, so_i, ta, b).
     //drawStateVectors(list(), newVecsAtNodeTime, b).
