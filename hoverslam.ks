@@ -18,7 +18,7 @@ declare function hoverslam {
     wait until _hoverslam_trueRadar <= 1.
     lock _hoverslam_trueRadar to 1.
 
-    wait until ship:verticalSpeed > -1.
+    wait until ship:verticalSpeed > -0.5.
 
     unlock throttle.
     unlock steering.
@@ -30,11 +30,17 @@ declare function hoverslam {
 }
 
 declare function hover {
-    parameter twr is 1.
+    parameter shouldStop.
+    parameter hoverVel is 0.
+    
+    local throtLock to throttle.
+    lock throttle to throtLock.
 
-    lock _hover_g to ship:body:mu / (ship:altitude + body:radius)^2.
-    lock _hover_maxAcc to ship:availableThrust / ship:mass.
-    lock _hover_hoverThrottle to _hover_g / _hover_maxAcc.
-
-    lock throttle to _hover_hoverThrottle * twr.
+    local throtPid is pidLoop(0.5, 0.1, 0).
+    set throtPid:setpoint to hoverVel.
+    
+    until shouldStop() {
+        set throtLock to throtPid:update(time:seconds, ship:verticalSpeed).
+        wait 0.
+    }
 }
