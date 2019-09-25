@@ -59,7 +59,7 @@ declare function addMatchInclinationNode {
 
 declare function addZeroInclinationNode {    
     local parentBody is ship:obt:body.
-    local iChange is ship:obt:inclination.
+    local iChange is -ship:obt:inclination.
 
     local iChangeDv to inclinationDv(ship:obt:velocity:orbit:mag, iChange).
     local halfBurnTime is maneuverTime(abs(iChangeDv) / 2).
