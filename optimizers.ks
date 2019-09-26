@@ -2,8 +2,8 @@ global function steepestDescentHillClimb {
     parameter fErr.                  // function to minimize
     parameter p0 is list(0,0,0).     // initial vector
     parameter s0 is list(1,1,1).     // initial step size vector
-    parameter acc is 1.2.            // acceleration
     parameter epsilon is 0.000001.   // max change in error
+    parameter acc is 1.2.            // acceleration
     parameter maxN is 100.           // max iterations
 
     local stepSize is s0:copy().
