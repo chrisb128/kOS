@@ -9,6 +9,7 @@ run once vec.
 run once draw.
 run once optimizers.
 run once hoverslam.
+run once vessel.
 
 declare function executeSequence {
     parameter l.
@@ -54,37 +55,21 @@ local function _launchToOrbit {
     logStatus("Out of atmosphere").
     wait 5.
 
+    logStatus("Deploy fairings").
     if (args:deployFairings) {
-        logInfo("Deploying fairings...").
-        
-        for fairing in ship:modulesNamed("ModuleProceduralFairing") {
-            fairing:doEvent("deploy").
-        }
-
+        deployFairings().
         wait 2.
     }
 
+    logStatus("Deploy antennas").
     if (args:deployAntennas) {
-        for antenna in ship:modulesNamed("ModuleRTAntenna") {
-            if antenna:hasEvent("activate") {
-                antenna:doEvent("activate").
-            }
-        }
-
-        for antenna in ship:modulesNamed("ModuleDeployableAntenna") {
-            if antenna:hasEvent("extend antenna") {
-                antenna:doEvent("extend antenna").
-            }
-        }
+        deployAntennas().
         wait 2.
     }
 
+    logStatus("Deploy solar panels").
     if (args:deploySolarPanels) {
-        for panel in ship:modulesNamed("ModuleDeployableSolarPanel") {
-            if panel:hasEvent("extend solar panel") {
-                panel:doEvent("extend solar panel").
-            }
-        }
+        deploySolarPanels().
         wait 2.
     }
 
@@ -92,7 +77,6 @@ local function _launchToOrbit {
     addCircularizeNodeAtAp().
     executeNode().
 
-    
     if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.025) {
         logStatus("Recircularizing").
         addCircularizeNodeAtAp().
