@@ -161,3 +161,10 @@ global function trueAnomaliesWithRadius {
 	local taWithR is arcCos((-sma * ecc^2 + sma - rad) / (ecc * rad)).
 	return list(taWithR,360-taWithR).//first true anomaly will be as orbit goes from PE to AP
 }
+
+global function convertTrueAnomalies {
+    parameter t, w, lan.
+    parameter new_w, new_lan.
+
+    return clamp360((t + w + lan) - (new_w + new_lan)).
+}
