@@ -17,6 +17,16 @@ global function vecToRelativeAn {
     return vcrs(shipN, tgtN).
 }
 
+global function vecToRelativeAnK {
+    parameter i.
+    parameter lan.
+    parameter b.
+    
+    local shipN is obtNormal(ship:obt:inclination, ship:obt:lan, b).
+    local tgtN is obtNormal(i, lan, b).
+    return vcrs(shipN, tgtN).
+}
+
 declare function addMatchInclinationNode {
     parameter targetBody.
 
