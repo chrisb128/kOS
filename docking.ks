@@ -124,6 +124,8 @@ global function autoDock {
     local distanceToDock is 0.
     local steerLock is ship:facing.
     unlock steering.
+    wait 0.
+    
     lock steering to steerLock.
 
 
@@ -157,10 +159,10 @@ global function autoDock {
         local setStarVel is 0.
         local setForeVel is 0.
 
-        set setUpVel to max(min(upToDockAxis / 10, 1), -1).
-        set setStarVel to max(min(starToDockAxis / 10, 1), -1).
+        set setUpVel to max(min(upToDockAxis / 5, 1), -1).
+        set setStarVel to max(min(starToDockAxis / 5, 1), -1).
 
-        if (distanceToDockAxis > 0.2) {
+        if (distanceToDockAxis > 0.5) {
             logStatus("Translating to dock axis").
         } else {
             logStatus("Approaching dock").
@@ -198,11 +200,4 @@ local function rcsCtl {
     } else { 
         set ship:control:starboard to 0.
     }
-}
-
-local function changeSides {
-    parameter targetDock.
-
-    local tgt is targetDock:ship.
-    local shipDock is ship:controlpart.
 }
