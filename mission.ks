@@ -7,6 +7,7 @@ run once hohmann.
 run once inclination.
 run once vec.
 run once draw.
+run once rendezvous.
 run once optimizers.
 run once hoverslam.
 run once vessel.
@@ -76,7 +77,7 @@ local function _launchToOrbit {
     logStatus("Circularizing").
     addCircularizeNodeAtAp().
     executeNode().
-
+    
     if (abs(ship:obt:apoapsis - ship:obt:periapsis) / (ship:obt:semimajoraxis-ship:obt:body:radius) > 0.025) {
         logStatus("Recircularizing").
         addCircularizeNodeAtAp().
@@ -297,32 +298,8 @@ global function landSomewhere {
     }
 
     set kuniverse:timewarp:warp to 0.
-
-    logStatus("Killing horizontal velocity").
-    local steerLock to heading(270, 0).
-    lock steering to steerLock.
-
-    wait until vAng(ship:facing:forevector, steerLock:forevector) < 1.
     
-    local throttleLock is 0.
-    lock throttle to throttleLock.
-    local maxAccel to ship:availableThrust / ship:mass.
-    local origHvel to vxcl(up:forevector, ship:velocity:surface).
-    local horizVel to origHvel:vec.
-
-    until vDot(origHvel, horizVel) < 0 {
-        set horizVel to vxcl(up:forevector, ship:velocity:surface).
-        set maxAccel to ship:availableThrust / ship:mass.
-
-        if (horizVel:mag > 2) {
-            set throttleLock to min(horizVel:mag / maxAccel, 1).
-        }
-
-        logInfo("hVel: " + round(horizVel:mag, 3), 1).
-        logInfo("maxAcc: " + round(maxAccel, 3), 2).
-        logInfo("throt: " + round(throttleLock, 3), 3).
-    }
-    set throttleLock to 0.
+    killHorizontalVelocity().
 
     on (alt:radar < 1000) {
         set gear to true.
@@ -373,9 +350,173 @@ global function landSomewhere {
     logStatus("Landed on the target!").
 }
 
+local function killHorizontalVelocity {
+    
+    logStatus("Killing horizontal velocity").
+    local horizVel to vxcl(up:forevector, ship:velocity:surface).
+    local steerLock to lookDirUp(-horizVel, up:forevector).
+    lock steering to steerLock.
+
+    wait until vAng(ship:facing:forevector, steerLock:forevector) < 1.
+    
+    local throttleLock is 0.
+    lock throttle to throttleLock.
+    local maxAccel to ship:availableThrust / ship:mass.
+    local origHvel to horizVel:vec.
+
+    until vDot(origHvel, horizVel) < 0 {
+        set horizVel to vxcl(up:forevector, ship:velocity:surface).
+        set steerLock to lookDirUp(-horizVel, up:forevector).
+        set maxAccel to ship:availableThrust / ship:mass.
+
+        if (horizVel:mag > 2) {
+            set throttleLock to min(horizVel:mag / maxAccel, 1).
+        }
+
+        logInfo("hVel: " + round(horizVel:mag, 3), 1).
+        logInfo("maxAcc: " + round(maxAccel, 3), 2).
+        logInfo("throt: " + round(throttleLock, 3), 3).
+    }
+    set throttleLock to 0.
+}
+
 global function landAt {
-    // assume circular starting orbit
-    // change inclination
+    parameter lat, lng.
+    parameter b.
+    // assume low circular starting orbit
+
+    // wait until target is on day side
+
+    // find inclination where orbit intersects latitude
+    local deorbitInc is arcTan(2*tan(lat)).
+
+    // find arg of periapsis and long of ascending node for inclined orbit that intersects longitude at stop radius    
+    local deorbitRPe is b:radius / 2.
+    local deorbitRAp is ship:obt:semimajoraxis.
+    local deorbitSma is smaFromApPe(deorbitRAp, deorbitRPe).
+    local deorbitE is eFromApPe(deorbitRAp, deorbitRPe).
+    
+    local deorbitStopHeight is b:radius + 5000.
+    local deorbitTaAtStopR is trueAnomaliesWithRadius(deorbitSma, deorbitE, deorbitStopHeight)[1].
+
+    local stopPos is (latlng(lat, lng):position - b:position).
+    set stopPos:mag to deorbitStopHeight.
+    local landingPosVd is vecDraw(
+        b:position,
+        stopPos,
+        RGB(1, 0, 0), "", 1.2, true, 0.2, true, true
+    ).
+    set landingPosVd:startupdater to { return b:position. }.
+    set landingPosVd:vecupdater to { 
+        local x is (latlng(lat, lng):position - b:position).
+        set x:mag to deorbitStopHeight.
+        return x.
+    }.
+
+    local function deorbitScoring {
+        parameter x.
+    
+        local deorbitLan is clamp360(x[0] + 360).
+
+        local sv is stateVectorsAtTrueAnomaly(deorbitE, deorbitSma, 180, deorbitLan, deorbitInc, deorbitTaAtStopR, b).
+        local travelTime is 360 / meanMotionK(b:mu, deorbitSma).
+        local tgtRot is 360 * (travelTime / b:rotationPeriod).
+
+        return ((latlng(lat, lng + tgtRot):position - b:position) - sv[0]):mag.
+    }
+
+    local wAndLan is steepestDescentHillClimb(
+        { parameter x. return deorbitScoring(x). },
+        list(0),
+        list(10),
+        0.01,
+        1.17
+    ).
+
+    local deorbitLan is clamp360(wAndLan[0] + 360).
+    local deorbitW is 180.
+
+    local shipTa is convertTrueAnomalies(180, deorbitW, deorbitLan, ship:obt:argumentofperiapsis, ship:obt:lan).
+    local sv is stateVectorsAtTrueAnomaly(deorbitE, deorbitSma, deorbitW, deorbitLan, deorbitInc, 180, b).
+    //drawStateVectors(list(), sv, b, RGB(0, 0, 1)).
+    
+    local shipVec is stateVectorsAtTrueAnomaly(ship:obt:eccentricity, ship:obt:semimajoraxis, ship:obt:argumentofperiapsis, ship:obt:lan, ship:obt:inclination, shipTa, b).
+    //drawStateVectors(list(), shipVec, b, RGB(0, 1, 0)).
+    
+    // estimate time to ta with mean motion because orbit should have started circular
+    local nodeTime is time:seconds + (clamp360((shipTa - ship:obt:trueAnomaly) + 360) / meanMotion(ship:obt)).
+    
+    local diff is sv[1] - shipVec[1].
+    add nodeFromVector(diff, nodeTime, shipVec[0], shipVec[1]).
+    executeNode().
+    
+    wait 1.
+
+    local horizVel is vxcl(up:forevector, ship:velocity:surface).
+    local killVelTime is maneuverTime(horizVel:mag).
+    
+    local vertVel is vCrs(up:forevector, ship:velocity:surface).
+    local secondsToAltitude is (ship:altitude - 5000) / vertVel:mag.
+
+    local steerLock to heading(360-ship:bearing, 0).
+    lock steering to steerLock.
+
+    until secondsToAltitude < killVelTime {
+        set vertVel to vCrs(up:forevector, ship:velocity:surface).
+        set secondsToAltitude to (ship:altitude - 5000) / vertVel:mag.
+
+        set horizVel to vxcl(up:forevector, ship:velocity:surface).
+        logInfo("HVel: " + round(horizVel:mag), 2).
+
+        set killVelTime to maneuverTime(horizVel:mag).
+        logInfo("Kill Time: " + round(killVelTime), 3).
+        logInfo("Seconds to Alt: T-" + round(secondsToAltitude), 4).
+
+        if (secondsToAltitude > 30) {
+            set kuniverse:timewarp:warp to 3.
+        } else {
+            set kuniverse:timewarp:warp to 0.
+        }
+
+        wait 0.
+    }
+    
+    killHorizontalVelocity().
+
+    on (alt:radar < 1000) {
+        set gear to true.
+    }
+
+    logStatus("Landing.").    
+    
+    logInfo("Killing vertical velocity").
+    hoverslam(50).
+
+    set steerLock to heading(270, 90).
+    lock steering to steerLock.
+    
+    logInfo("Hovering 10s").
+    local hstart is time:seconds.
+    hover({ return time:seconds < hstart + 10. }).
+
+    logInfo("Soft descent").    
+    if ship:bounds:bottomaltradar > 100 {
+        hover({ return ship:bounds:bottomaltradar < 100. }, -30).
+    }
+    hover({ return ship:bounds:bottomaltradar < 10. }, -10).
+    gear on.
+    hover({ return ship:bounds:bottomaltradar < 5. }, -1).
+    hover({ return ship:bounds:bottomaltradar < 0.5. }, -0.5).
+
+    lock throttle to 0.
+    unlock all.
+
+    set steerLock to heading(270, 90).
+    lock steering to steerLock.
+    logStatus("Waiting for stability...").
+
+    wait until ship:status = "LANDED" and abs(ship:velocity:surface:mag) < 0.1.
+    logStatus("Landed at: " + ship:geoposition).
 }
 
 global function autoRendezvous {
