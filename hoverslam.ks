@@ -44,3 +44,12 @@ declare function hover {
         wait 0.
     }
 }
+
+declare function hoverLoop {    
+    parameter hoverVel is 0.
+    
+    local throtPid is pidLoop(0.5, 0.1, 0).
+    set throtPid:setpoint to hoverVel.
+    
+    lock throttle to throtPid:update(time:seconds, ship:verticalSpeed).
+}

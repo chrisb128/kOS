@@ -21,3 +21,4 @@ copypath("0:/draw.ks", "").
 copypath("0:/optimizers.ks", "").
 copypath("0:/orbits.ks", "").
 copypath("0:/vessel.ks", "").
+copypath("0:/resources.ks", "").

@@ -58,10 +58,10 @@ global function addRendezvousTransferNode {
     local function getTransferParamsForNodeTime {
         parameter nt.
 
-        local shipTaAtNodeTime is trueAnomalyAtTime(so, nt).
-        local tgtTaAtXferAp is clamp360(((shipTaAtNodeTime + 180) + (so:argumentOfPeriapsis + so:lan)) - (to:argumentOfPeriapsis + to:lan)).
+        local shipTaAtNodeTime is trueAnomalyAtTime(so, nt).        
+        local tgtTaAtXferAp is convertTrueAnomalies(shipTaAtNodeTime + 180, so:argumentOfPeriapsis, so:lan, to:argumentOfPeriapsis, to:lan).
 
-        local xferW is (shipTaAtNodeTime + so:argumentOfPeriapsis + so:lan) - so:lan.
+        local xferW is clamp360(shipTaAtNodeTime + so:argumentOfPeriapsis).
         local xferRPe to radiusFromTrueAnomaly(shipTaAtNodeTime, so:eccentricity, so:semimajoraxis).
         local xferRAp to radiusFromTrueAnomaly(tgtTaAtXferAp, to:eccentricity, to:semimajoraxis).
         local xferSma is smaFromApPe(xferRAp, xferRPe).
@@ -84,7 +84,7 @@ global function addRendezvousTransferNode {
 
         local tgtTaAtShipXferApTime is trueAnomalyAtTime(to, nt + travelTime).
         
-        local xferVecAtAp is stateVectorsAtTrueAnomaly(xfer:e, xfer:sma, xfer:w, to:lan, to:inclination, 180, b).
+        local xferVecAtAp is stateVectorsAtTrueAnomaly(xfer:e, xfer:sma, xfer:w, so:lan, so:inclination, 180, b).
         local tgtVecAtShipXferAp is stateVectorsAtTrueAnomaly(to:eccentricity, to:semimajoraxis, to:argumentofperiapsis, to:lan, to:inclination, tgtTaAtShipXferApTime, b).
 
         return (xferVecAtAp[0] - tgtVecAtShipXferAp[0]):mag.
@@ -93,14 +93,16 @@ global function addRendezvousTransferNode {
     set nodeTime to steepestDescentHillClimb(
         { parameter x. return interceptDistance(x[0]). },
         list(nodeTime),
-        list(1)
+        list(30),
+        0.1,
+        1.5
     )[0].
 
     local xfer is getTransferParamsForNodeTime(nodeTime).
     local shipTaAtNodeTime is trueAnomalyAtTime(so, nodeTime).
 
     // vectors for simulated transfer orbit
-    local xferVecAtPe is stateVectorsAtTrueAnomaly(xfer:e, xfer:sma, xfer:w, to:lan, to:inclination, 0, b).
+    local xferVecAtPe is stateVectorsAtTrueAnomaly(xfer:e, xfer:sma, xfer:w, so:lan, so:inclination, 0, b).
     // vectors for the ship at transfer time
     local shipVecAtXferPe is stateVectorsAtTrueAnomaly(so:eccentricity, so:semimajoraxis, so:argumentOfPeriapsis, so:lan, so:inclination, shipTaAtNodeTime, b).
     // delta-v vector

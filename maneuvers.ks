@@ -76,3 +76,41 @@ global function addSetHyperbolicPeriapsisNode {
     add node.
     return node.
 }
+
+global function addSetPeriapsisNode {
+    parameter periapsis.
+    parameter nodeTime.
+    
+    local b is ship:obt:body.
+    local so_e is ship:obt:eccentricity.
+    local so_sma is ship:obt:semimajoraxis.
+    local so_w is ship:obt:argumentOfPeriapsis.
+    local so_lan is ship:obt:lan.
+    local so_i is ship:obt:inclination.
+    
+    local shipTaAtNode is vAng(positionAt(ship, nodeTime)-b:position, vecToPe(so_i, so_lan, so_w, b)).
+    local shipRAtNode is radiusFromTrueAnomaly(shipTaAtNode, so_e, so_sma).
+    local no_pe is periapsis + b:radius.
+    local no_ap is shipRAtNode.
+    local no_e is eFromApPe(no_ap, no_pe).
+    local no_sma is smaFromApPe(no_ap, no_pe).
+    local no_w is clamp360(shipTaAtNode + 180).
+    
+    local shipVecsAtNode is stateVectorsAtTrueAnomaly(so_e, so_sma, so_w, so_lan, so_i, shipTaAtNode, b).
+    drawStateVectors(list(), shipVecsAtNode, b).
+    local tgtVecsAtNode is stateVectorsAtTrueAnomaly(no_e, no_sma, no_w, so_lan, so_i, 180, b).
+    local w_adj is vAng(shipVecsAtNode[0], tgtVecsAtNode[0]).
+    drawStateVectors(list(), tgtVecsAtNode, b).
+
+    // if periapsis > ship:obt:periapsis {
+    //     set no_w to clamp360(no_w + w_adj).
+    // } else {
+    //     set no_w to clamp360(no_w - w_adj).
+    // }
+    // set tgtVecsAtNode to stateVectorsAtTrueAnomaly(no_e, no_sma, no_w, so_lan, so_i, 180, b).
+
+    local diff is (tgtVecsAtNode[1] - shipVecsAtNode[1]).
+    local node is nodeFromVector(diff, nodeTime, shipVecsAtNode[0], shipVecsAtNode[1]).
+    add node.
+    return node.
+}

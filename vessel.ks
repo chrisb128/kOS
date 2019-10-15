@@ -43,17 +43,6 @@ global function stopSurfaceHarvesters {
     }
 }
 
-global function getResourceFillRatio {
-    parameter resName.
-
-    for res in stage:resources {
-        if res:name = resName {
-            return res:amount / res:capacity.
-        }
-    }
-
-    return 0.
-}
 
 global function deployFairings {
     for fairing in ship:modulesNamed("ModuleProceduralFairing") {
@@ -79,6 +68,35 @@ global function deploySolarPanels {
     for panel in ship:modulesNamed("ModuleDeployableSolarPanel") {
         if panel:hasEvent("extend solar panel") {
             panel:doEvent("extend solar panel").
+        }
+    }
+}
+
+global function startIsru {
+    parameter mode.
+
+    for isru in ship:modulesNamed("ModuleResourceConverter") {
+        for f in isru:allfieldnames {
+            if f = mode {
+                isru:doAction("start isru [" + mode + "]", true).
+
+                break.
+            }
+        }
+    }
+}
+
+
+global function stopIsru {
+    parameter mode is "lf+ox".
+
+    for isru in ship:modulesNamed("ModuleResourceConverter") {
+        for f in isru:allfieldnames {
+            if f = mode {
+                isru:doAction("stop isru [" + mode + "]", true).
+
+                break.
+            }
         }
     }
 }

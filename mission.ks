@@ -164,7 +164,7 @@ global function _transferToSatellite {
     
     logStatus("Executing transfer").
     addRendezvousTransferNode(targetBody).
-    executeNode().
+    executeNode(true, 10, true, { return ship:obt:periapsis < 0. }).
     wait 10.
 
     if ship:orbit:hasNextPatch {
@@ -420,6 +420,7 @@ global function landAt {
 
         local sv is stateVectorsAtTrueAnomaly(deorbitE, deorbitSma, 180, deorbitLan, deorbitInc, deorbitTaAtStopR, b).
         local travelTime is 360 / meanMotionK(b:mu, deorbitSma).
+        
         local tgtRot is 360 * (travelTime / b:rotationPeriod).
 
         return ((latlng(lat, lng + tgtRot):position - b:position) - sv[0]):mag.
@@ -429,7 +430,7 @@ global function landAt {
         { parameter x. return deorbitScoring(x). },
         list(0),
         list(10),
-        0.01,
+        0.1,
         1.17
     ).
 
@@ -482,23 +483,45 @@ global function landAt {
     }
     
     killHorizontalVelocity().
-
+    
     on (alt:radar < 1000) {
         set gear to true.
     }
 
-    logStatus("Landing.").    
+    logStatus("Landing.").
     
-    logInfo("Killing vertical velocity").
-    hoverslam(50).
+    
+    logInfo("Hoverslam to 1km").
+    hoverslam(1000).
+    
+    kUniverse:pause().
 
-    set steerLock to heading(270, 90).
-    lock steering to steerLock.
-    
-    logInfo("Hovering 10s").
+    logInfo("Hovering 3s").
     local hstart is time:seconds.
-    hover({ return time:seconds < hstart + 10. }).
+    hover({ return time:seconds < hstart + 3. }).
+    
 
+    until false {
+        logInfo("Closing distance to landing target").
+        local stopTarget to (latlng(lat, lng):position - b:position).
+        set stopTarget:mag to deorbitStopHeight.
+
+        local hoverSteerTarget is lookDirUp(stopTarget, ship:facing:upvector).
+        lock steering to hoverSteerTarget.
+
+        local lockSteering is false.
+        on true {
+            if lockSteering {
+                preserve.
+            }
+        }
+
+        hoverloop().
+    }
+    
+    logInfo("Hoverslam to 50m").
+    hoverslam(50).
+    
     logInfo("Soft descent").    
     if ship:bounds:bottomaltradar > 100 {
         hover({ return ship:bounds:bottomaltradar < 100. }, -30).
@@ -509,6 +532,7 @@ global function landAt {
     hover({ return ship:bounds:bottomaltradar < 0.5. }, -0.5).
 
     lock throttle to 0.
+    set lockSteering to false.
     unlock all.
 
     set steerLock to heading(270, 90).
