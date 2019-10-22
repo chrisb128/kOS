@@ -1,4 +1,4 @@
-local fieldWidth is 50.
+local fieldWidth is terminal:width.
 
 declare function logMission {
     parameter message.
