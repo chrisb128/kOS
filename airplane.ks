@@ -9,11 +9,11 @@ global function initAutopilot {
 
     // input - ground speed
     // output - throttle ctl
-    local throttlePid is pidLoop(0.5, 0.04, 0.8, 0, 1).
+    local throttlePid is pidLoop(0.5, 0.04, 0.7, 0, 1).
 
     // input - altitude
     // output - target vertical speed
-    local vSpeedPid is pidLoop(0.5, 0, 0.25, -50, 50).
+    local vSpeedPid is pidLoop(0.5, 0, 0.6, -50, 50).
 
     // input - vertical speed
     // output - target pitch
@@ -29,7 +29,7 @@ global function initAutopilot {
 
     // input - roll
     // output - target roll vel
-    local rollRotPid is pidLoop(-0.5, -0.1, 0.00, -10, 10).
+    local rollRotPid is pidLoop(-0.5, -0.1, -0.015, -10, 10).
 
     // input - roll vel
     // output - roll ctl
@@ -64,8 +64,17 @@ global function initAutopilot {
         "rollCtlPid", rollCtlPid,
         "yawRotPid", yawRotPid,
         "yawCtlPid", yawCtlPid,
-        "rollRange", 45
+        "rollRange", 45,
+        "lockRoll", false
     ).
+}
+
+global function setAutopilotVertSpeedRange {
+    parameter autopilot.
+    parameter range.
+
+    set autopilot:vSpeedPid:maxoutput to range.
+    set autopilot:vSpeedPid:minoutput to -range.
 }
 
 global function setAutopilotPitchRange {
@@ -91,7 +100,9 @@ global function autopilotLoop {
 
     local targetRoll is 0.
 
-    logInfo("Ground speed: " + ship:velocity:surface:mag, 1).
+    logInfo("Target speed: " + targetSpeed, 13).
+    logInfo("Ground speed: " + ship:velocity:surface:mag, 0).
+    logInfo("Target Alt: " + targetAltitude, 1).
     logInfo("Altitude: " + ship:altitude, 2).
     logInfo("Pitch range: " + round(autopilot:pitchPid:maxoutput, 2), 3).
 
@@ -114,10 +125,14 @@ global function autopilotLoop {
     if abs(headingErr) > 0.25 {
         // set roll to turn towards new heading
         if (headingErr > 0) {
-            set targetRoll to min(headingErr * 5, autopilot:rollRange).
+            set targetRoll to min(headingErr * 4, autopilot:rollRange).
         } else {
-            set targetRoll to max(headingErr * 5, -autopilot:rollRange).
+            set targetRoll to max(headingErr * 4, -autopilot:rollRange).
         }
+    }
+
+    if (autopilot:lockRoll) {
+        set targetRoll to 0.
     }
 
     logInfo("Target roll: " + round(targetRoll, 3), 7).
@@ -136,7 +151,6 @@ global function autopilotLoop {
 
 
     local targetPitch to autopilot:pitchPid:update(time:seconds, ship:verticalspeed).
-
     logInfo("Target pitch: " + targetPitch, 5).
 
 
@@ -153,15 +167,16 @@ global function autopilotLoop {
     // actual controls
     set autopilot:pitchRotPid:setpoint to targetPitch.
     local tgtPitchVel to autopilot:pitchRotPid:update(time:seconds, shipPitch).
-
+    logInfo("Tgt Pitch rate: " + tgtPitchVel, 24).
     set autopilot:pitchCtlPid:setpoint to tgtPitchVel.
-    set ctl:pitch to autopilot:pitchCtlPid:update(time:seconds, pitchAngVel).
-
+    local ctlPitch to autopilot:pitchCtlPid:update(time:seconds, pitchAngVel).
     set autopilot:rollRotPid:setpoint to targetRoll.
     local tgtRollVel to autopilot:rollRotPid:update(time:seconds, shipRoll).
+    logInfo("Tgt Roll rate: " + tgtRollVel, 25).
 
     set autopilot:rollCtlPid:setpoint to tgtRollVel.
-    set ctl:roll to autopilot:rollCtlPid:update(time:seconds, rollAngVel).
+    local ctlRoll to autopilot:rollCtlPid:update(time:seconds, rollAngVel).
+    set ctl:roll to ctlRoll.
 
     if (abs(headingErr) < 0.25) {
         set autopilot:yawRotPid:setpoint to targetHeading.
@@ -171,7 +186,18 @@ global function autopilotLoop {
     local tgtYawVel to autopilot:yawRotPid:update(time:seconds, currentHeading).
 
     set autopilot:yawCtlPid:setpoint to tgtYawVel.
-    set ctl:yaw to autopilot:yawCtlPid:update(time:seconds, yawAngVel).
+    local ctlYaw to autopilot:yawCtlPid:update(time:seconds, yawAngVel).
+
+    // adjust ctl pitch to turn faster while rolling
+    set ctl:pitch to ctlPitch.
+
+    // adjust ctl yaw to maintain altitude
+    set ctl:yaw to ctlYaw.
+
+    logInfo("Ctl Pitch: " + ctl:pitch, 17).
+    logInfo("Ctl  Roll: " + ctl:roll, 18).
+    logInfo("Ctl   Yaw: " + ctl:yaw, 19).
+
 
     if writeLog {
         log (
