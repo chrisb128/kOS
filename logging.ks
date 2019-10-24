@@ -25,3 +25,10 @@ declare function formatVec {
 
     return "V(" + round(v:x, r) + ", " + round(v:y, r) + ", " + round(v:z, r) + ")".
 }
+
+declare function formatLatLng {
+    parameter latLng.
+    parameter r is 3.
+
+    return "GEO(" + round(latLng:lat, r) + ", " + round(latLng:lng, r) + ")".
+}
