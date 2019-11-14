@@ -7,41 +7,41 @@ local logFile is "0:/airplane_log.csv".
 
 global function initAutopilot {
 
-    // input - ground speed
+    // input - potential + kinetic energy
     // output - throttle ctl
-    local throttlePid is pidLoop(0.5, 0.04, 0.7, 0, 1).
+    local throttlePid is pidLoop(0.075, 0.001, 0.02, 0, 1).
 
-    // input - altitude
-    // output - target vertical speed
-    local vSpeedPid is pidLoop(0.5, 0, 0.6, -50, 50).
-
-    // input - vertical speed
+    // input - potential / potential + kinetic energy
     // output - target pitch
-    local pitchPid is pidLoop(0.5, 0.1, 0.00, -15, 15).
+    local pitchPid is pidLoop(100, 6, 20, -30, 30).
 
     // input - pitch
     // output - target pitch vel
-    local pitchRotPid is pidLoop(0.8, 0.1, 0.00, -10, 10).
+    local pitchRotPid is pidLoop(0.1, 0.001, 0.000, -12, 12).
 
     // input - pitch vel
     // output - pitch ctl
-    local pitchCtlPid is pidLoop(0.05, 0.0, 0.015, -1, 1).
+    local pitchCtlPid is pidLoop(0.2, 0.05, 0.000, -1, 1).
+
+    // input - heading err
+    // output - roll angle
+    local rollPid is pidLoop(-3, -0.2, -0.01, -45, 45).
 
     // input - roll
     // output - target roll vel
-    local rollRotPid is pidLoop(-0.5, -0.1, -0.015, -10, 10).
+    local rollRotPid is pidLoop(-0.09, -0.00, -0.075, -25, 25).
 
     // input - roll vel
     // output - roll ctl
-    local rollCtlPid is pidLoop(0.01, 0.0, 0.005, -1, 1).
+    local rollCtlPid is pidLoop(0.05, 0.01, 0.00, -1, 1).
 
     // input - yaw
     // output - target yaw vel
-    local yawRotPid is pidLoop(1, 0.1, 0, -10, 10).
+    local yawRotPid is pidLoop(0.15, 0.01, 0, -1, 1).
 
     // input - yaw vel
     // output - yaw ctl
-    local yawCtlPid is pidLoop(0.00, 0.0, 0, -1, 1).
+    local yawCtlPid is pidLoop(0.3, 0.0, 0, -1, 1).
 
     if writeLog {
         if exists(logFile) {
@@ -50,31 +50,22 @@ global function initAutopilot {
         }
 
         log (
-            "Time,Tgt Speed,Speed,Kp,Ki,Kd,Out,Tgt Alt,Alt,Kp,Ki,Kd,Out,Tgt VSpeed,VSpeed,Kp,Ki,Kd,Out,Tgt Pitch,Pitch,Kp,Ki,Kd,Out,Tgt PitchV,PitchV,Kp,Ki,Kd,Out"
+            "Time,Tgt Speed,Speed,Kp,Ki,Kd,Out,Tgt Alt,Alt,Kp,Ki,Kd,Out,Tgt Pitch,Pitch,Kp,Ki,Kd,Out,Tgt PitchV,PitchV,Kp,Ki,Kd,Out"
         ) to logFile.
     }
 
     return lexicon(
         "throttlePid", throttlePid,
-        "vSpeedPid", vSpeedPid,
         "pitchPid", pitchPid,
         "pitchRotPid", pitchRotPid,
         "pitchCtlPid", pitchCtlPid,
+        "rollPid", rollPid,
         "rollRotPid", rollRotPid,
         "rollCtlPid", rollCtlPid,
         "yawRotPid", yawRotPid,
         "yawCtlPid", yawCtlPid,
-        "rollRange", 45,
         "lockRoll", false
     ).
-}
-
-global function setAutopilotVertSpeedRange {
-    parameter autopilot.
-    parameter range.
-
-    set autopilot:vSpeedPid:maxoutput to range.
-    set autopilot:vSpeedPid:minoutput to -range.
 }
 
 global function setAutopilotPitchRange {
@@ -89,70 +80,102 @@ global function setAutopilotRollRange {
     parameter autopilot.
     parameter range.
 
-    set autopilot:rollRange to range.
+    set autopilot:rollPid:maxoutput to range.
+    set autopilot:rollPid:minoutput to -range.
 }
+
+local function potentialEnergy {
+    parameter alt.
+
+    return ship:mass * alt.
+}
+
+local function kineticEnergy {
+    parameter alt.
+    parameter speed.
+
+    local bodyG is body:mu / (alt + body:radius)^2.
+
+    return (ship:mass * speed^2) / (2 * bodyG).
+}
+
+local function momentOfInertia {
+    local angMom is ship:angularMomentum.
+    local angVel is ship:angularVel.
+
+    return V(angMom:x / angVel:x, angMom:y / angVel:y, angMom:z / angVel:z).
+}
+
 
 global function autopilotLoop {
     parameter autopilot.
     parameter targetSpeed.
     parameter targetAltitude.
     parameter targetHeading.
+    parameter targetRoll.
+    parameter lockRoll.
 
-    local targetRoll is 0.
-
-    logInfo("Target speed: " + targetSpeed, 13).
-    logInfo("Ground speed: " + ship:velocity:surface:mag, 0).
-    logInfo("Target Alt: " + targetAltitude, 1).
+    logInfo("Target Altitude: " + targetAltitude, 1).
     logInfo("Altitude: " + ship:altitude, 2).
-    logInfo("Pitch range: " + round(autopilot:pitchPid:maxoutput, 2), 3).
+    logInfo("Target Speed: " + targetSpeed, 3).
+    logInfo("Speed: " + ship:velocity:surface:mag, 4).
+
+    local currentPotential is potentialEnergy(ship:altitude).
+    local currentKinetic is kineticEnergy(ship:altitude, ship:velocity:surface:mag).
+    local currentTotal is (currentPotential + currentKinetic) / ship:mass.
+    local currentRatio is currentPotential / (currentPotential + currentKinetic).
+    logInfo("Total: " + currentTotal, 7).
+    logInfo("Ratio: " + currentRatio, 10).
+
+    local desiredPotential is potentialEnergy(targetAltitude).
+    local desiredKinetic is kineticEnergy(targetAltitude, targetSpeed).
+    local desiredTotal is (desiredPotential + desiredKinetic) / ship:mass.
+    local desiredRatio is desiredPotential / (desiredPotential + desiredKinetic).
+    logInfo("Desired Total: " + desiredTotal, 6).
+    logInfo("Desired Ratio: " + desiredRatio, 9).
+
+    logInfo("Total Err: " + (desiredTotal - currentTotal), 8).
+    logInfo("Ratio Err: " + (desiredRatio - currentRatio), 11).
 
     local shipPitch is 90 - vAng(ship:up:forevector, ship:facing:forevector).
-    logInfo("Pitch: " + round(shipPitch, 3), 4).
+    logInfo("Pitch: " + round(shipPitch, 3), 13).
 
     local shipRoll is -(90-vAng(ship:up:forevector, -1 * ship:facing:starvector)).
-    logInfo("Roll: " + round(shipRoll, 3), 6).
+    logInfo("Roll: " + round(shipRoll, 3), 14).
 
     local currentHeading is getShipHeading().
-    logInfo("Current heading: " + currentHeading, 8).
-    logInfo("Target heading: " + targetHeading, 9).
+    logInfo("Current heading: " + currentHeading, 15).
+    logInfo("Target heading: " + targetHeading, 16).
 
     local headingErr is currentHeading - targetHeading.
     if abs((currentHeading + 360) - targetHeading) < abs(headingErr) {
         set headingErr to (currentHeading + 360) - targetHeading.
     }
 
-
-    if abs(headingErr) > 0.25 {
-        // set roll to turn towards new heading
-        if (headingErr > 0) {
-            set targetRoll to min(headingErr * 4, autopilot:rollRange).
-        } else {
-            set targetRoll to max(headingErr * 4, -autopilot:rollRange).
-        }
+    if abs(headingErr) > 180 {
+        set headingErr to -headingErr.
     }
 
-    if (autopilot:lockRoll) {
-        set targetRoll to 0.
+    if not lockRoll {
+        set autopilot:rollPid:setpoint to 0.
+        set targetRoll to autopilot:rollPid:update(time:seconds, headingErr).
     }
-
-    logInfo("Target roll: " + round(targetRoll, 3), 7).
 
     set ctl to ship:control.
 
-    set autopilot:throttlePid:setpoint to targetSpeed.
-    local throtLock is autopilot:throttlePid:update(time:seconds, ship:velocity:surface:mag).
+    set autopilot:throttlePid:setpoint to desiredTotal.
+    local throtLock is autopilot:throttlePid:update(time:seconds, currentTotal).
     lock throttle to throtLock.
 
-    set autopilot:vSpeedPid:setpoint to targetAltitude.
-    local tgtVertSpeed is autopilot:vSpeedPid:update(time:seconds, ship:altitude).
-    set autopilot:pitchPid:setpoint to tgtVertSpeed.
-    logInfo("Target vSpeed: " + tgtVertSpeed, 15).
-    logInfo("Actual vSpeed: " + ship:verticalspeed, 16).
+    if autopilot:throttlePid:error < -1000 {
+        brakes on.
+    } else if autopilot:throttlePid:error > -600 {
+        brakes off.
+    }
 
-
-    local targetPitch to autopilot:pitchPid:update(time:seconds, ship:verticalspeed).
-    logInfo("Target pitch: " + targetPitch, 5).
-
+    set autopilot:pitchPid:setpoint to desiredRatio.
+    local targetPitch to autopilot:pitchPid:update(time:seconds, currentRatio).
+    logInfo("Target Pitch: " + round(targetPitch, 3), 12).
 
     local angVel is ship:angularVel.
 
@@ -160,39 +183,31 @@ global function autopilotLoop {
     local pitchAngVel is vDot(angVel, ship:facing:forevector).
     local yawAngVel is vDot(angVel, ship:facing:upvector).
 
-    logInfo("Roll rate: " + rollAngVel, 10).
-    logInfo("Pitch rate: " + pitchAngVel, 11).
-    logInfo("Yaw rate: " + yawAngVel, 12).
-
     // actual controls
     set autopilot:pitchRotPid:setpoint to targetPitch.
     local tgtPitchVel to autopilot:pitchRotPid:update(time:seconds, shipPitch).
     logInfo("Tgt Pitch rate: " + tgtPitchVel, 24).
-    set autopilot:pitchCtlPid:setpoint to tgtPitchVel.
-    local ctlPitch to autopilot:pitchCtlPid:update(time:seconds, pitchAngVel).
+
     set autopilot:rollRotPid:setpoint to targetRoll.
     local tgtRollVel to autopilot:rollRotPid:update(time:seconds, shipRoll).
     logInfo("Tgt Roll rate: " + tgtRollVel, 25).
 
+    set autopilot:yawRotPid:setpoint to 0.
+    local tgtYawVel to autopilot:yawRotPid:update(time:seconds, headingErr).
+    logInfo("Tgt Yaw rate: " + tgtYawVel, 26).
+
+    set autopilot:pitchCtlPid:setpoint to tgtPitchVel.
+    local ctlPitch to autopilot:pitchCtlPid:update(time:seconds, pitchAngVel).
+
     set autopilot:rollCtlPid:setpoint to tgtRollVel.
     local ctlRoll to autopilot:rollCtlPid:update(time:seconds, rollAngVel).
-    set ctl:roll to ctlRoll.
-
-    if (abs(headingErr) < 0.25) {
-        set autopilot:yawRotPid:setpoint to targetHeading.
-    } else {
-        set autopilot:yawRotPid:setpoint to currentHeading.
-    }
-    local tgtYawVel to autopilot:yawRotPid:update(time:seconds, currentHeading).
 
     set autopilot:yawCtlPid:setpoint to tgtYawVel.
     local ctlYaw to autopilot:yawCtlPid:update(time:seconds, yawAngVel).
 
-    // adjust ctl pitch to turn faster while rolling
-    set ctl:pitch to ctlPitch.
-
-    // adjust ctl yaw to maintain altitude
-    set ctl:yaw to ctlYaw.
+    set ctl:roll to ctlRoll.
+    set ctl:pitch to ctlPitch * cos(shipRoll).
+    set ctl:yaw to ctlYaw * cos(shipRoll) + ctlPitch * sin(shipRoll).
 
     logInfo("Ctl Pitch: " + ctl:pitch, 17).
     logInfo("Ctl  Roll: " + ctl:roll, 18).
@@ -210,12 +225,6 @@ global function autopilotLoop {
             autopilot:throttlePid:output + "," +
             targetAltitude + "," +
             ship:altitude + "," +
-            autopilot:vSpeedPid:pTerm + "," +
-            autopilot:vSpeedPid:iTerm + "," +
-            autopilot:vSpeedPid:dTerm + "," +
-            autopilot:vSpeedPid:output + "," +
-            tgtVertSpeed + "," +
-            ship:verticalspeed + "," +
             autopilot:pitchPid:pTerm + "," +
             autopilot:pitchPid:iTerm + "," +
             autopilot:pitchPid:dTerm + "," +

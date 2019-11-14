@@ -4,7 +4,7 @@ copypath("0:/logging.ks", "").
 copypath("0:/time.ks", "").
 copypath("0:/circle.ks", "").
 copypath("0:/runways.ks", "").
-copypath("0:/airplane_te.ks", "").
+copypath("0:/airplane.ks", "").
 
 
 run "0:/test.ks".
