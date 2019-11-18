@@ -9,35 +9,35 @@ global function initAutopilot {
 
     // input - potential + kinetic energy
     // output - throttle ctl
-    local throttlePid is pidLoop(0.075, 0.001, 0.02, 0, 1).
+    local throttlePid is pidLoop(0.075, 0.000, 0.0175, 0, 1).
 
     // input - potential / potential + kinetic energy
     // output - target pitch
-    local pitchPid is pidLoop(100, 6, 20, -30, 30).
+    local pitchPid is pidLoop(100, 0, 20, -30, 30).
 
     // input - pitch
     // output - target pitch vel
-    local pitchRotPid is pidLoop(0.1, 0.001, 0.000, -12, 12).
+    local pitchRotPid is pidLoop(0.3, 0.0015, 0.001, -2, 2).
 
     // input - pitch vel
     // output - pitch ctl
-    local pitchCtlPid is pidLoop(0.2, 0.05, 0.000, -1, 1).
+    local pitchCtlPid is pidLoop(0.5, 0.05, 0.000, -1, 1).
 
     // input - heading err
     // output - roll angle
-    local rollPid is pidLoop(-3, -0.2, -0.01, -45, 45).
+    local rollPid is pidLoop(-2, -0.0, -0.1, -45, 45).
 
     // input - roll
     // output - target roll vel
-    local rollRotPid is pidLoop(-0.09, -0.00, -0.075, -25, 25).
+    local rollRotPid is pidLoop(-0.06, -0.00, -0.04, -15, 15).
 
     // input - roll vel
     // output - roll ctl
-    local rollCtlPid is pidLoop(0.05, 0.01, 0.00, -1, 1).
+    local rollCtlPid is pidLoop(0.025, 0.005, 0.00, -1, 1).
 
-    // input - yaw
+    // input - heading err
     // output - target yaw vel
-    local yawRotPid is pidLoop(0.15, 0.01, 0, -1, 1).
+    local yawRotPid is pidLoop(0.2, 0.0, 0, -1.5, 1.5).
 
     // input - yaw vel
     // output - yaw ctl
