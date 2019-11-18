@@ -9,6 +9,12 @@ global function bearingTo {
     return mod(360+bearing, 360).
 }
 
+global function distanceTo {
+    parameter target is latlng(0,0).
+
+    return target:altitudePosition(ship:altitude):mag.
+}
+
 global function getShipHeading {
     local east to vcrs(up:vector, north:vector). //Reference heading
     local traveling to srfprograde:vector.
