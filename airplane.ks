@@ -44,14 +44,29 @@ global function initAutopilot {
     local yawCtlPid is pidLoop(0.3, 0.0, 0, -1, 1).
 
     if writeLog {
-        if exists(logFile) {
-            local f is open(logFile).
-            f:clear().
-        }
+        if exists("0:/" + ship:name + "/ThrottlePid.csv") { deletePath("0:/" + ship:name + "/ThrottlePid.csv"). }
+        log pidLogHeader() to "0:/" + ship:name + "/ThrottlePid.csv".
 
-        log (
-            "Time,Tgt Speed,Speed,Kp,Ki,Kd,Out,Tgt Alt,Alt,Kp,Ki,Kd,Out,Tgt Pitch,Pitch,Kp,Ki,Kd,Out,Tgt PitchV,PitchV,Kp,Ki,Kd,Out"
-        ) to logFile.
+        if exists("0:/" + ship:name + "/PitchPid.csv") { deletePath("0:/" + ship:name + "/PitchPid.csv"). }
+        log pidLogHeader() to "0:/" + ship:name + "/PitchPid.csv".
+
+        if exists("0:/" + ship:name + "/PitchRotPid.csv") { deletePath("0:/" + ship:name + "/PitchRotPid.csv"). }
+        log pidLogHeader() to "0:/" + ship:name + "/PitchRotPid.csv".
+
+        if exists("0:/" + ship:name + "/RollRotPid.csv") { deletePath("0:/" + ship:name + "/RollRotPid.csv"). }
+        log pidLogHeader() to "0:/" + ship:name + "/RollRotPid.csv".
+
+        if exists("0:/" + ship:name + "/YawRotPid.csv") { deletePath("0:/" + ship:name + "/YawRotPid.csv"). }
+        log pidLogHeader() to "0:/" + ship:name + "/YawRotPid.csv".
+
+        if exists("0:/" + ship:name + "/PitchCtlPid.csv") { deletePath("0:/" + ship:name + "/PitchCtlPid.csv"). }
+        log pidLogHeader() to "0:/" + ship:name + "/PitchCtlPid.csv".
+
+        if exists("0:/" + ship:name + "/RollCtlPid.csv") { deletePath("0:/" + ship:name + "/RollCtlPid.csv"). }
+        log pidLogHeader() to "0:/" + ship:name + "/RollCtlPid.csv".
+
+        if exists("0:/" + ship:name + "/YawCtlPid.csv") { deletePath("0:/" + ship:name + "/YawCtlPid.csv"). }
+        log pidLogHeader() to "0:/" + ship:name + "/YawCtlPid.csv".
     }
 
     return lexicon(
@@ -64,7 +79,8 @@ global function initAutopilot {
         "rollCtlPid", rollCtlPid,
         "yawRotPid", yawRotPid,
         "yawCtlPid", yawCtlPid,
-        "lockRoll", false
+        "lockRoll", false,
+        "writeLog", writeLog
     ).
 }
 
@@ -106,8 +122,26 @@ local function momentOfInertia {
     return V(angMom:x / angVel:x, angMom:y / angVel:y, angMom:z / angVel:z).
 }
 
+local function pidLogHeader {
+    return "Time,Kp,Ki,Kd,Input,SetPoint,Err,PTerm,ITerm,DTerm,Output".
+}
 
-global function autopilotLoop {
+local function pidLogEntry {
+    parameter pid.
+    return time:seconds + ","
+        + pid:kp + ","
+        + pid:ki + ","
+        + pid:kd + ","
+        + pid:input + ","
+        + pid:setpoint + ","
+        + pid:error + ","
+        + pid:pterm + ","
+        + pid:iterm + ","
+        + pid:dterm + ","
+        + pid:output.
+}
+
+
     parameter autopilot.
     parameter targetSpeed.
     parameter targetAltitude.
@@ -186,24 +220,27 @@ global function autopilotLoop {
     // actual controls
     set autopilot:pitchRotPid:setpoint to targetPitch.
     local tgtPitchVel to autopilot:pitchRotPid:update(time:seconds, shipPitch).
-    logInfo("Tgt Pitch rate: " + tgtPitchVel, 24).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:pitchRotPid) to "0:/" + ship:name + "/PitchRotPid.csv". }
 
     set autopilot:rollRotPid:setpoint to targetRoll.
     local tgtRollVel to autopilot:rollRotPid:update(time:seconds, shipRoll).
-    logInfo("Tgt Roll rate: " + tgtRollVel, 25).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:rollRotPid) to "0:/" + ship:name + "/RollRotPid.csv". }
 
     set autopilot:yawRotPid:setpoint to 0.
     local tgtYawVel to autopilot:yawRotPid:update(time:seconds, headingErr).
-    logInfo("Tgt Yaw rate: " + tgtYawVel, 26).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:yawRotPid) to "0:/" + ship:name + "/YawRotPid.csv". }
 
     set autopilot:pitchCtlPid:setpoint to tgtPitchVel.
     local ctlPitch to autopilot:pitchCtlPid:update(time:seconds, pitchAngVel).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:pitchCtlPid) to "0:/" + ship:name + "/PitchCtlPid.csv". }
 
     set autopilot:rollCtlPid:setpoint to tgtRollVel.
     local ctlRoll to autopilot:rollCtlPid:update(time:seconds, rollAngVel).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:rollCtlPid) to "0:/" + ship:name + "/RollCtlPid.csv". }
 
     set autopilot:yawCtlPid:setpoint to tgtYawVel.
     local ctlYaw to autopilot:yawCtlPid:update(time:seconds, yawAngVel).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:yawCtlPid) to "0:/" + ship:name + "/YawCtlPid.csv". }
 
     set ctl:roll to ctlRoll.
     set ctl:pitch to ctlPitch * cos(shipRoll).
