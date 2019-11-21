@@ -6,31 +6,33 @@ global function initAutopilot {
 
     // input - potential + kinetic energy
     // output - throttle ctl
-    local throttlePid is pidLoop(0.075, 0.000, 0.0175, 0, 1).
+    local throttlePid is pidLoop(0.1, 0.000, 0.015, 0, 1).
 
     // input - potential / potential + kinetic energy
     // output - target pitch
-    local pitchPid is pidLoop(100, 0, 20, -30, 30).
+    local pitchPid is pidLoop(150, 0, 15, -30, 30).
+
+    //local pitchPid is pidLoop(300, 10, 25, -30, 30).
 
     // input - pitch
     // output - target pitch vel
-    local pitchRotPid is pidLoop(0.3, 0.0015, 0.001, -2, 2).
+    local pitchRotPid is pidLoop(0.05, 0.00, 0.0, -1, 1).
 
     // input - pitch vel
     // output - pitch ctl
-    local pitchCtlPid is pidLoop(0.5, 0.05, 0.000, -1, 1).
+    local pitchCtlPid is pidLoop(1.5, 0.1, 0, -1, 1).
 
     // input - heading err
     // output - roll angle
-    local rollPid is pidLoop(-2, -0.0, -0.1, -45, 45).
+    local rollPid is pidLoop(-2, -0.0, -0.1, -35, 35).
 
     // input - roll
     // output - target roll vel
-    local rollRotPid is pidLoop(-0.06, -0.00, -0.04, -15, 15).
+    local rollRotPid is pidLoop(-0.005, -0.00, -0.00375, -5, 5).
 
     // input - roll vel
     // output - roll ctl
-    local rollCtlPid is pidLoop(0.025, 0.005, 0.00, -1, 1).
+    local rollCtlPid is pidLoop(0.25, 0.05, 0.00, -1, 1).
 
     // input - heading err
     // output - target yaw vel
@@ -81,19 +83,6 @@ global function initAutopilot {
     ).
 }
 
-global function flightPlan {
-    parameter cruiseSpeed.
-    parameter cruiseAltitude.
-    parameter waypoints.
-    parameter destination.
-
-    return lexicon(
-        "cruiseSpeed", cruiseSpeed,
-        "cruiseAltitude", cruiseAltitude,
-        "waypoints", waypoints,
-        "destination", destination
-    ).
-}
 
 global function setAutopilotPitchRange {
     parameter autopilot.
@@ -155,7 +144,6 @@ local function pidLogEntry {
         + pid:output.
 }
 
-
 global function autopilotSetControls {
     parameter autopilot.
     parameter targetSpeed.
@@ -195,14 +183,7 @@ global function autopilotSetControls {
     logInfo("Current heading: " + currentHeading, 15).
     logInfo("Target heading: " + targetHeading, 16).
 
-    local headingErr is currentHeading - targetHeading.
-    if abs((currentHeading + 360) - targetHeading) < abs(headingErr) {
-        set headingErr to (currentHeading + 360) - targetHeading.
-    }
-
-    if abs(headingErr) > 180 {
-        set headingErr to -headingErr.
-    }
+    local headingErr is headingError(currentHeading, targetHeading).
 
     if not autopilot:lockRoll {
         set autopilot:rollPid:setpoint to 0.
@@ -254,183 +235,9 @@ global function autopilotSetControls {
 
     local ctl to ship:control.
     set ctl:roll to ctlRoll.
-    set ctl:pitch to ctlPitch * cos(shipRoll) + ctlYaw * sin(shipRoll).
-    set ctl:yaw to ctlYaw * cos(shipRoll) + ctlPitch * sin(shipRoll).
+
+    set ctl:pitch to ctlPitch * cos(shipRoll).// + ctlYaw * sin(shipRoll).
+    set ctl:yaw to ctlYaw * cos(shipRoll).// + (ctlPitch * sin(shipRoll) * 0.1).
 
     wait 0.
-}
-
-global function initNavigator {
-    parameter plan.
-
-    return lexicon(
-        "plan", (plan),
-        "autopilot", initAutopilot(),
-        "target", ship:geoposition,
-        "currentWaypoint", (-1),
-        "mode", "idle",
-        "speed", 0,
-        "heading", getShipHeading(),
-        "altitude", ship:altitude,
-        "startPoint", ship:geoposition,
-        "liftPoint", ship:geoposition
-    ).
-}
-
-local function closeTo {
-    parameter target.
-    local closeDistance is 1000.
-    return distanceTo(target) < closeDistance.
-}
-
-global function navigatorSetWaypoint {
-    parameter nav.
-
-    local plan is nav:plan.
-    if (nav:mode = "cruise") {
-        if  (nav:currentWaypoint < 0) {
-            set nav:currentWaypoint to 0.
-            set nav:target to plan:waypoints[nav:currentWaypoint].
-        } else if (nav:currentWaypoint < plan:waypoints:length and closeTo(nav:target)) {
-            set nav:currentWaypoint to nav:currentWaypoint + 1.
-
-            if (nav:currentWaypoint < plan:waypoints:length) {
-                set nav:target to plan:waypoints[nav:currentWaypoint].
-            } else {
-                set nav:target to plan:destination:approach.
-            }
-        }
-    } else if (nav:mode = "approach") {
-        if (nav:currentWaypoint = plan:waypoints:length) {
-            set nav:target to plan:destination:approach.
-        }
-
-        if (closeTo(plan:destination:approach) and nav:currentWaypoint = plan:waypoints:length) {
-            set nav:target to plan:destination:start.
-            set nav:currentWaypoint to -1.
-        }
-    }
-}
-
-global function navigatorUpdateFlightMode {
-    parameter nav.
-
-    local plan is nav:plan.
-
-
-    if (nav:mode = "ascend"
-        and abs(plan:cruiseAltitude - ship:altitude) < 10) {
-        set nav:mode to "cruise".
-    }
-
-    if (nav:mode = "cruise"
-        and nav:currentWaypoint = plan:waypoints:length
-        and closeTo(plan:destination:approach)) {
-        set nav:mode to "approach".
-    } else if (nav:mode = "approach") {
-        if (distanceTo(plan:destination:start) < 500) {
-            set nav:mode to "land".
-        }
-    } else if (nav:mode = "land") {
-        if (ship:bounds:bottomaltradar < 1) {
-            set nav:mode to "break".
-        }
-    } else if (nav:mode = "break") {
-        if (ship:velocity:surface:mag < 0.1) {
-            set nav:mode to "idle".
-        }
-    }
-}
-
-global function navigatorSetAutopilotParams {
-    parameter nav.
-    local plan is nav:plan.
-
-    if (nav:mode = "ascend") {
-        if (ship:bounds:bottomaltradar < 1) {
-            nav:autopilot:pitchPid:reset().
-        }
-
-        setAutopilotPitchRange(nav:autopilot,
-            max(-20.0, min(1, 1-(ship:bounds:bottomaltradar / 20))),
-            min(20.0, max(4, ship:bounds:bottomaltradar / 20))).
-
-    } else if (nav:mode = "cruise") {
-        setAutopilotPitchRange(nav:autopilot, -20, 20).
-
-    } else if (nav:mode = "approach") {
-
-        setAutopilotPitchRange(nav:autopilot,
-            max(-20.0, min(1, 1-(ship:bounds:bottomaltradar / 20))),
-            min(20.0, max(4, ship:bounds:bottomaltradar / 20))).
-
-    } else if (nav:mode = "land") {
-        if (ship:bounds:bottomaltradar < 1) {
-            setAutopilotPitchRange(nav:autopilot, 0, 0).
-        }
-    }
-}
-
-global function navigatorSetTargets {
-    parameter nav.
-    local plan is nav:plan.
-
-    if (nav:mode = "ascend") {
-        set nav:heading to getShipHeading().
-
-        if (ship:bounds:bottomaltradar < 1) {
-            set nav:liftPoint to ship:geoposition.
-        }
-
-        set nav:speed to max(20, min(plan:cruiseSpeed, log10(1.4 + distanceTo(nav:startPoint) / 600) * plan:cruiseSpeed)).
-        set nav:altitude to max(nav:liftPoint:terrainHeight, min(plan:cruiseAltitude, (distanceTo(nav:liftPoint) / 8) + nav:liftPoint:terrainHeight)).
-    }
-    else if (nav:mode = "cruise") {
-        set nav:heading to nav:target:heading.
-        set nav:altitude to plan:cruiseAltitude.
-    }
-    else if (nav:mode = "approach") {
-        set nav:heading to nav:target:heading.
-        set nav:altitude to min(plan:cruiseAltitude, max(plan:destination:start:terrainheight, plan:destination:start:terrainheight + distanceTo(plan:destination:start) / 10)).
-        set nav:speed to max(50, min(100, distanceTo(plan:destination:start) / 40)).
-
-        if (not closeTo(plan:destination:start)) {
-            local correction is (plan:destination:end:heading - plan:destination:start:heading) * -10.
-            set nav:heading to nav:heading + correction.
-        }
-
-        if (distanceTo(plan:destination:start) < 500) {
-            set nav:target to plan:destination:end.
-            set nav:altitude to plan:destination:start:terrainheight.
-        }
-    } else if (nav:mode = "land") {
-        set nav:heading to nav:destination:end:heading.
-        set nav:speed to min(nav:speed, max(50, ship:bounds:bottomaltradar)).
-
-    } else if (nav:mode = "break") {
-        set nav:heading to getShipHeading().
-        set nav:speed to 0.
-    }
-}
-
-global function navigatorSetShipControls {
-    parameter nav.
-
-    if (nav:mode = "ascend") {
-        brakes off.
-        sas off.
-        if (ship:bounds:bottomaltradar > 10) {
-            gear off.
-        }
-    }
-    if (nav:mode = "approach") {
-        if (distanceTo(nav:plan:destination:start) < 500) {
-            gear on.
-        }
-    }
-    if (nav:mode = "idle") {
-        unlock all.
-        sas on.
-        brakes on.
-    }
 }

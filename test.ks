@@ -1,5 +1,6 @@
-run once airplane.
 run once circle.
+run once airplane.
+run once navigator.
 run once runways.
 run once time.
 
@@ -9,11 +10,14 @@ clearscreen.
 
 brakes on. // brakes start off, turn them on to prevent the plane from rolling on the tarmac before we're ready
 
-local plan is flightPlan(150, 1500,
+local plan is createFlightPlan(150, 1500,
     list(
-        islandWest:start
+        createWaypoint(150, 1500, dessertNorth:approach)
     ),
-    kscEast
+    dessertNorth,
+    150,
+    10,
+    600
 ).
 
 countdown(3).
@@ -35,6 +39,7 @@ until false {
     navigatorSetWaypoint(nav).
     navigatorSetAutopilotParams(nav).
     navigatorSetTargets(nav).
+
     navigatorSetShipControls(nav).
 
     logMission("Mode: " + nav:mode).
