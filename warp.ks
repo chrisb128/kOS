@@ -35,3 +35,11 @@ declare function autoWarp {
         set kUniverse:timewarp:warp to 0. // 1x
     }
 }
+
+global function warpToSoi {
+    local soiTime is eta:transition + time:seconds.
+    until (time:seconds > soiTime) {
+        autoWarp(soiTime).
+        wait 10.
+    }
+}

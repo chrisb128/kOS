@@ -66,22 +66,3 @@ declare function ascent {
 
     unlock steering.
 }
-
-declare function stageFlameout {
-    local lastStage is 0.
-    list engines in engineList.
-    
-    for en in engineList {
-        if en:stage > lastStage {
-            set lastStage to en:stage.
-        }
-    }
-
-    for en in engineList {
-        if en:stage = lastStage {
-            if en:flameout {
-                return true.
-            }
-        }
-    }
-}.
