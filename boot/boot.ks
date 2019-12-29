@@ -20,7 +20,7 @@ if (exists("1:/mission.json")) {
     wait 1.
     print "Executing in 1 ...".
     wait 1.
-    
+
     clearscreen.
     
     local options is newMissionExecuteOptions().
