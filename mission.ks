@@ -94,7 +94,7 @@ global function missionExecute {
 
     until (this:currentStep >= this:steps:length) {
         options:beforeStep().
-        this:steps[this:currentStep]:type:execute(this:steps[this:currentStep]).
+        this:steps[this:currentStep]:type:execute(this, this:steps[this:currentStep]).
 
         set this:currentStep to this:currentStep + 1.
         options:afterStep().
@@ -126,6 +126,7 @@ local function missionStepType {
     }.
     
     set this["execute"] to {
+        parameter mission.
         parameter step.
     }.
     
@@ -136,6 +137,7 @@ local function missionStepTypePause {
     local this is missionStepType("Pause", "Pause").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.
         kUniverse:pause().
     }.
@@ -147,6 +149,7 @@ local function missionStepTypeQuicksave {
     local this is missionStepType("Quicksave", "Quicksave").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.
         kUniverse:quickSave().
     }.
@@ -158,6 +161,7 @@ local function missionStepTypeStage {
     local this is missionStepType("Stage", "Stage").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.
         stage.
     }.
@@ -169,6 +173,7 @@ local function missionStepTypeAscent {
     local this is missionStepType("Ascend", "Ascend").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.
         if (step:params:autoStage) {
             enableAutoStager().
@@ -187,9 +192,7 @@ local function missionStepTypeAscent {
         if (step:params:deployAntennas) {
             deployAntennas().
             wait 2.
-        }
-        
-        
+        }                
         if (step:params:autoStage) {
             disableAutoStager().
         }
@@ -214,6 +217,7 @@ local function missionStepTypeExecuteNode {
     local this is missionStepType("ExecuteNode", "Execute Node").
     
     set this["execute"] to {
+        parameter mission.
         parameter step.
         if (step:params:autoStage) {
             enableAutoStager().
@@ -246,6 +250,7 @@ local function missionStepTypeAddNodeCircularize {
     local this is missionStepType("AddNodeCircularize", "Add Node - Circularize").
     
     set this["execute"] to {
+        parameter mission.
         parameter step.
 
         if (step:params:nodeTime:type = "AP") {
@@ -262,6 +267,7 @@ local function missionStepTypeAddNodeSetPeriapsis {
     local this is missionStepType("AddNodeSetPeriapsis", "Add Node - Set Periapsis").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.
 
         local nodeTime is step:params:nodeTime:arg + time:seconds.
@@ -270,10 +276,10 @@ local function missionStepTypeAddNodeSetPeriapsis {
             addSetPeriapsisNodeAtAp(step:params:targetPe).
         } else if (step:params:nodeTime:type = NodeTimeType:Time) {
             if (orbitAt(ship, nodeTime):apoapsis < 0) {
-            addSetHyperbolicPeriapsisNode(step:params:targetPe, nodeTime).
-        } else {
-            addSetPeriapsisNode(step:params:targetPe, nodeTime).
-        }
+                addSetHyperbolicPeriapsisNode(step:params:targetPe, nodeTime).
+            } else {
+                addSetPeriapsisNode(step:params:targetPe, nodeTime).
+            }
         }
     }.
 
@@ -284,6 +290,7 @@ local function missionStepTypeAddNodeZeroInclination {
     local this is missionStepType("AddNodeZeroInclination", "Add Node - Zero Inclination").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.        
         addZeroInclinationNode().
     }.
@@ -295,6 +302,7 @@ local function missionStepTypeAddNodeMatchInclination {
     local this is missionStepType("AddNodeMatchInclination", "Add Node - Match Inclination").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.
 
         if (bodyExists(step:params:target)) {
@@ -311,6 +319,7 @@ local function missionStepTypeAddNodeRendezvousTransfer {
     local this is missionStepType("AddNodeRendezvousTransfer", "Add Node - Rendezvous Transfer").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.
 
         if (bodyExists(step:params:target)) {
@@ -327,8 +336,22 @@ local function missionStepTypeWarpToSoi {
     local this is missionStepType("WarpToSoi", "Warp To SOI").
 
     set this["execute"] to {
+        parameter mission.
         parameter step.
         warpToSoi().
+    }.
+
+    return this.
+}
+
+local function missionStepTypeGoToStep {
+    local this is missionStepType("GoToStep", "Go to step").
+
+    set this["execute"] to {
+        parameter mission.
+        parameter step.
+
+        set mission:currentStep to step - 1.  // subtract one, because the mission executer will increment at the end of the step
     }.
 
     return this.
