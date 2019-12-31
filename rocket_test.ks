@@ -2,14 +2,12 @@ run once mission.
 
 clearscreen.
 
-ship:partstagged("vesselDock")[0]:controlFrom().
-
 local ascentOptions is newAscentOptions(90000).
 local mission is newMission("Minmus Visit",
     list(
         newMissionStep(MissionStepTypes:Stage),
         newMissionStep(MissionStepTypes:Ascend, ascentOptions),
-        newMissionStep(MissionStepTypes:AddNodeCircularize, newNodeTimeOptions(NodeTimeType:Apoapsis)),
+        newMissionStep(MissionStepTypes:AddNodeCircularize, lexicon("nodeTime", newNodeTimeOptions(NodeTimeType:Apoapsis))),
         newMissionStep(MissionStepTypes:ExecuteNode, lexicon("autoStage", true)),
         newMissionStep(MissionStepTypes:AddNodeMatchInclination, lexicon("target", minmus:name)),
         newMissionStep(MissionStepTypes:ExecuteNode, lexicon("autoStage", true)),
@@ -20,7 +18,7 @@ local mission is newMission("Minmus Visit",
         newMissionStep(MissionStepTypes:WarpToSoi),
         newMissionStep(MissionStepTypes:AddNodeSetPeriapsis, lexicon("nodeTime", newNodeTimeOptions(NodeTimeType:Time, 180), "targetPe", 30000)),
         newMissionStep(MissionStepTypes:ExecuteNode, lexicon("autoStage", true)),
-        newMissionStep(MissionStepTypes:AddNodeCircularize, newNodeTimeOptions(NodeTimeType:Periapsis)),
+        newMissionStep(MissionStepTypes:AddNodeCircularize, lexicon("nodeTime", newNodeTimeOptions(NodeTimeType:Periapsis))),
         newMissionStep(MissionStepTypes:ExecuteNode, lexicon("autoStage", true))
     )
 ).

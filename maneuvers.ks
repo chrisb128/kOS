@@ -1,10 +1,8 @@
 run once math.
 run once vec.
 
-declare function addCircularizeNodeAtAp {
+global function addCircularizeNodeAtAp {
     
-    local body to ship:orbit:body.
-
     local r to ship:orbit:apoapsis + ship:orbit:body:radius.
     local initV to sqrt( body:mu * ( (2/r) - (1/ship:orbit:semimajoraxis) ) ).
     local finalV to sqrt( body:mu * ( (2/r) - (1/r) ) ).
@@ -14,10 +12,8 @@ declare function addCircularizeNodeAtAp {
     return n.
 }
 
-declare function addCircularizeNodeAtPe {
+global function addCircularizeNodeAtPe {
     
-    local body to ship:orbit:body.
-
     local r to ship:orbit:periapsis + ship:orbit:body:radius.
     local initV to sqrt( body:mu * ( (2/r) - (1/ship:orbit:semimajoraxis) ) ).
     local finalV to sqrt( body:mu * ( (2/r) - (1/r) ) ).
@@ -29,8 +25,7 @@ declare function addCircularizeNodeAtPe {
 
 global function addSetHyperbolicPeriapsisNode {
     parameter targetPe.
-    parameter nodeTime.
-    
+    parameter nodeTime.    
 
     local b is ship:obt:body.
     local so_e is ship:obt:eccentricity.
@@ -73,6 +68,15 @@ global function addSetHyperbolicPeriapsisNode {
 
     local diff is (newVecsAtNodeTime[1] - vecsAtNodeTime[1]).
     local node is nodeFromVector(diff, nodeTime, vecsAtNodeTime[0], vecsAtNodeTime[1]).
+    add node.
+    return node.
+}
+
+global function addSetPeriapsisNodeAtAp {
+    parameter periapsis.
+    
+    local dV1 is -hohmannDV2(body:mu, periapsis + body:radius, ship:obt:semimajoraxis).        
+    local node is node(eta:apoapsis + time:seconds, 0, 0, dV1).
     add node.
     return node.
 }

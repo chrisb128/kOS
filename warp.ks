@@ -42,4 +42,5 @@ global function warpToSoi {
         autoWarp(soiTime).
         wait 10.
     }
+    set kUniverse:timewarp:warp to 0.
 }

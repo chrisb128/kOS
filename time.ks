@@ -1,3 +1,4 @@
+run once logging.
 
 global function countdown {
     local parameter count is 10.

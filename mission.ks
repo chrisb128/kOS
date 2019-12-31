@@ -1,7 +1,10 @@
 run once vessel.
+run once executenode.
 run once autostage.
 run once ascent.
 run once maneuvers.
+run once inclination.
+run once hohmann.
 
 // MISSION 
 global function newMission {
@@ -25,6 +28,21 @@ global function newMission {
 
     return this.
 }
+
+global MissionStepTypes is lexicon(
+    "Pause", missionStepTypePause(),
+    "Quicksave", missionStepTypeQuicksave(),
+    "Stage", missionStepTypeStage(),
+    "Ascend", missionStepTypeAscent(),
+    "ExecuteNode", missionStepTypeExecuteNode(),
+    "AddNodeCircularize", missionStepTypeAddNodeCircularize(),
+    "AddNodeSetPeriapsis", missionStepTypeAddNodeSetPeriapsis(),
+    "AddNodeZeroInclination", missionStepTypeAddNodeZeroInclination(),
+    "AddNodeMatchInclination", missionStepTypeAddNodeMatchInclination(),
+    "AddNodeRendezvousTransfer", missionStepTypeAddNodeRendezvousTransfer(),
+    "WarpToSoi", missionStepTypeWarpToSoi(),
+    "GoToStep", missionStepTypeGoToStep()
+).
 
 global function missionDeserialize {
     parameter this.
@@ -94,20 +112,6 @@ global function newMissionStep {
 
     return this.
 }
-
-global MissionStepTypes is lexicon(
-    "Pause", missionStepTypePause(),
-    "Quicksave", missionStepTypeQuicksave(),
-    "Stage", missionStepTypeStage(),
-    "Ascend", missionStepTypeAscent(),
-    "ExecuteNode", missionStepTypeExecuteNode(),
-    "AddNodeCircularize", missionStepTypeAddNodeCircularize(),
-    "AddNodeSetPeriapsis", missionStepTypeAddNodeSetPeriapsis(),
-    "AddNodeZeroInclination", missionStepTypeAddNodeZeroInclination(),
-    "AddNodeMatchInclination", missionStepTypeAddNodeMatchInclination(),
-    "AddNodeRendezvousTransfer", missionStepTypeAddNodeRendezvousTransfer(),
-    "WarpToSoi", missionStepTypeWarpToSoi()
-).
 
 local function missionStepType {
     parameter key, name.
@@ -261,14 +265,15 @@ local function missionStepTypeAddNodeSetPeriapsis {
         parameter step.
 
         local nodeTime is step:params:nodeTime:arg + time:seconds.
-        if (step:params:nodeTime:type = "AP") {
+        if (step:params:nodeTime:type = NodeTimeType:Apoapsis) {
             set nodeTime to eta:apoapsis + time:seconds.
-        }
-
-        if (orbitAt(nodeTime):apoapsis < 0) {
+            addSetPeriapsisNodeAtAp(step:params:targetPe).
+        } else if (step:params:nodeTime:type = NodeTimeType:Time) {
+            if (orbitAt(ship, nodeTime):apoapsis < 0) {
             addSetHyperbolicPeriapsisNode(step:params:targetPe, nodeTime).
         } else {
             addSetPeriapsisNode(step:params:targetPe, nodeTime).
+        }
         }
     }.
 
