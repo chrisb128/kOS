@@ -4,6 +4,7 @@ copypath("0:/logging.ks", "").
 copypath("0:/time.ks", "").
 copypath("0:/circle.ks", "").
 copypath("0:/runways.ks", "").
+copypath("0:/energy.ks", "").
 copypath("0:/airplane.ks", "").
 copypath("0:/navigator.ks", "").
 
