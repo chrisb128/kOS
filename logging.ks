@@ -32,3 +32,30 @@ declare function formatLatLng {
 
     return "GEO(" + round(latLng:lat, r) + ", " + round(latLng:lng, r) + ")".
 }
+
+global function logFileName {
+    parameter logName.
+
+    return "0:/" + ship:name + "/" + logName.
+}
+
+global function pidLogHeader {
+    return "Time,Kp,Ki,Kd,Input,SetPoint,Err,PTerm,ITerm,DTerm,Output".
+}
+
+global function pidLogEntry {
+    parameter pid.
+    parameter startTime.
+
+    return time:seconds - startTime + ","
+        + pid:kp + ","
+        + pid:ki + ","
+        + pid:kd + ","
+        + pid:input + ","
+        + pid:setpoint + ","
+        + pid:error + ","
+        + pid:pterm + ","
+        + pid:iterm + ","
+        + pid:dterm + ","
+        + pid:output.
+}

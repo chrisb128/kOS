@@ -1,76 +1,77 @@
 run once logging.
+run once energy.
 
 local writeLog is true.
 
-global function initAutopilot {
+global function newAutopilot {
 
-    // input - potential + kinetic energy
-    // output - throttle ctl
-    local throttlePid is pidLoop(0.1, 0.000, 0.015, 0, 1).
-
-    // input - potential / potential + kinetic energy
-    // output - target pitch
-    local pitchPid is pidLoop(150, 0, 15, -30, 30).
-
-    //local pitchPid is pidLoop(300, 10, 25, -30, 30).
-
-    // input - pitch
-    // output - target pitch vel
-    local pitchRotPid is pidLoop(0.05, 0.00, 0.0, -1, 1).
-
-    // input - pitch vel
-    // output - pitch ctl
-    local pitchCtlPid is pidLoop(1.5, 0.1, 0, -1, 1).
+    local energyCtlr is newEnergyController().
 
     // input - heading err
     // output - roll angle
-    local rollPid is pidLoop(-2, -0.0, -0.1, -35, 35).
+    local rollPid is pidLoop(-0.1, -0.0, -0.0, -20, 20).
 
-    // input - roll
+
+    // Desired Rotation Rate Controllers
+
+    local rotScale is 0.175.
+
+    local rotScalePitch is 2.5 * rotScale.
+    local rotScaleRoll is -1 * rotScale.
+    local rotScaleYaw is -0.1 * rotScale.
+    
+    local rotKp is 0.10.
+    local rotKi is 0.01.
+    local rotKd is 0.00.
+
+    // input - pitch err
+    // output - target pitch vel
+    local pitchRotPid is pidLoop(rotScalePitch*rotKp, rotScalePitch*rotKi, rotScalePitch*rotKd, -1, 1).    
+    // input - roll err
     // output - target roll vel
-    local rollRotPid is pidLoop(-0.005, -0.00, -0.00375, -5, 5).
-
-    // input - roll vel
-    // output - roll ctl
-    local rollCtlPid is pidLoop(0.25, 0.05, 0.00, -1, 1).
-
+    local rollRotPid is pidLoop(rotScaleRoll*rotKp, rotScaleRoll*rotKi, rotScaleRoll*rotKd, -1, 1).    
     // input - heading err
     // output - target yaw vel
-    local yawRotPid is pidLoop(0.2, 0.0, 0, -1.5, 1.5).
+    local yawRotPid is pidLoop(rotScaleYaw*rotKp, rotScaleYaw*rotKi,  rotScaleYaw*rotKd, -1, 1).
 
+
+    // Desired Torque Output Controllers
+
+    // input - pitch vel
+    // output - pitch ctl
+    local pitchCtlPid is pidLoop().
+    // input - roll vel
+    // output - roll ctl
+    local rollCtlPid is pidLoop().
     // input - yaw vel
     // output - yaw ctl
-    local yawCtlPid is pidLoop(0.3, 0.0, 0, -1, 1).
+    local yawCtlPid is pidLoop().
 
     if writeLog {
-        if exists("0:/" + ship:name + "/ThrottlePid.csv") { deletePath("0:/" + ship:name + "/ThrottlePid.csv"). }
-        log pidLogHeader() to "0:/" + ship:name + "/ThrottlePid.csv".
+        if exists(logFileName("PitchRotPid.csv")) { deletePath(logFileName("PitchRotPid.csv")). }
+        log pidLogHeader() to logFileName("PitchRotPid.csv").
 
-        if exists("0:/" + ship:name + "/PitchPid.csv") { deletePath("0:/" + ship:name + "/PitchPid.csv"). }
-        log pidLogHeader() to "0:/" + ship:name + "/PitchPid.csv".
+        if exists(logFileName("RollRotPid.csv")) { deletePath(logFileName("RollRotPid.csv")). }
+        log pidLogHeader() to logFileName("RollRotPid.csv").
 
-        if exists("0:/" + ship:name + "/PitchRotPid.csv") { deletePath("0:/" + ship:name + "/PitchRotPid.csv"). }
-        log pidLogHeader() to "0:/" + ship:name + "/PitchRotPid.csv".
+        if exists(logFileName("YawRotPid.csv")) { deletePath(logFileName("YawRotPid.csv")). }
+        log pidLogHeader() to logFileName("YawRotPid.csv").
 
-        if exists("0:/" + ship:name + "/RollRotPid.csv") { deletePath("0:/" + ship:name + "/RollRotPid.csv"). }
-        log pidLogHeader() to "0:/" + ship:name + "/RollRotPid.csv".
+        if exists(logFileName("PitchCtlPid.csv")) { deletePath(logFileName("PitchCtlPid.csv")). }
+        log pidLogHeader() to logFileName("PitchCtlPid.csv").
 
-        if exists("0:/" + ship:name + "/YawRotPid.csv") { deletePath("0:/" + ship:name + "/YawRotPid.csv"). }
-        log pidLogHeader() to "0:/" + ship:name + "/YawRotPid.csv".
+        if exists(logFileName("RollCtlPid.csv")) { deletePath(logFileName("RollCtlPid.csv")). }
+        log pidLogHeader() to logFileName("RollCtlPid.csv").
 
-        if exists("0:/" + ship:name + "/PitchCtlPid.csv") { deletePath("0:/" + ship:name + "/PitchCtlPid.csv"). }
-        log pidLogHeader() to "0:/" + ship:name + "/PitchCtlPid.csv".
+        if exists(logFileName("YawCtlPid.csv")) { deletePath(logFileName("YawCtlPid.csv")). }
+        log pidLogHeader() to logFileName("YawCtlPid.csv").
 
-        if exists("0:/" + ship:name + "/RollCtlPid.csv") { deletePath("0:/" + ship:name + "/RollCtlPid.csv"). }
-        log pidLogHeader() to "0:/" + ship:name + "/RollCtlPid.csv".
-
-        if exists("0:/" + ship:name + "/YawCtlPid.csv") { deletePath("0:/" + ship:name + "/YawCtlPid.csv"). }
-        log pidLogHeader() to "0:/" + ship:name + "/YawCtlPid.csv".
+        if exists(logFileName("Torque.csv")) { deletePath(logFileName("Torque.csv")). }
+        log "Time,MaxAngularVelocityX,MaxAngularVelocityY,MaxAngularVelocityZ,AvailableTorqueX,AvailableTorqueY,AvailableTorqueZ,MomentOfInertiaX,MomentOfInertiaY,MomentOfInertiaZ"  to logFileName("Torque.csv").
     }
 
     return lexicon(
-        "throttlePid", throttlePid,
-        "pitchPid", pitchPid,
+        "energyCtlr", energyCtlr,
         "pitchRotPid", pitchRotPid,
         "pitchCtlPid", pitchCtlPid,
         "rollPid", rollPid,
@@ -79,10 +80,15 @@ global function initAutopilot {
         "yawRotPid", yawRotPid,
         "yawCtlPid", yawCtlPid,
         "lockRoll", false,
-        "writeLog", writeLog
+        "writeLog", writeLog,
+        "startTime", time:seconds,
+        "stoppingTime", 4,
+        "pitchTs", 5,
+        "rollTs", 5,
+        "yawTs", 5,
+        "controlAvg", newMovingAverageVec(3)
     ).
 }
-
 
 global function setAutopilotPitchRange {
     parameter autopilot.
@@ -90,8 +96,8 @@ global function setAutopilotPitchRange {
     parameter max.
 
 
-    set autopilot:pitchPid:maxoutput to max.
-    set autopilot:pitchPid:minoutput to min.
+    set autopilot:energyCtlr:pitchPid:maxoutput to max.
+    set autopilot:energyCtlr:pitchPid:minoutput to min.
 }
 
 global function setAutopilotRollRange {
@@ -103,141 +109,219 @@ global function setAutopilotRollRange {
     set autopilot:rollPid:minoutput to min.
 }
 
-local function potentialEnergy {
-    parameter alt.
+local function newMovingAverageVec {
+    parameter count.
 
-    return ship:mass * alt.
+    return lexicon(
+        "items", list(),
+        "count", count
+    ).
 }
 
-local function kineticEnergy {
-    parameter alt.
-    parameter speed.
+local function movingAverageVecUpdate {
+    parameter ma.
+    parameter item.
 
-    local bodyG is body:mu / (alt + body:radius)^2.
+    if (ma:items:length >= ma:count) {
+        ma:items:remove(0).
+    }
 
-    return (ship:mass * speed^2) / (2 * bodyG).
+    ma:items:add(item).
+}
+
+local function movingAverageVecMean {
+    parameter ma.
+    
+    local avg is V(0,0,0).
+
+    for i in ma:items {
+        set avg:x to avg:x + i:x.
+        set avg:y to avg:y + i:y.
+        set avg:z to avg:z + i:z.
+    }
+
+    set avg:x to avg:x / ma:items:length.
+    set avg:y to avg:y / ma:items:length.
+    set avg:z to avg:z / ma:items:length.
+
+    return avg.
+}
+
+local torqueAvg is newMovingAverageVec(10).
+
+local function torqueProvidedByPartsTagged {
+    parameter tag.
+    local t is V(0,0,0).
+    for elevator in ship:partsTagged(tag) {
+        for moduleName in elevator:modules {
+            local mod is elevator:getmodule(moduleName).
+            if (mod:hasTorque) {
+                local modTorque is mod:torque:availableTorque.
+                set t:x to t:x + ((abs(modTorque[0]:x) + abs(modTorque[1]:x)) / 2).
+                set t:y to t:y + ((abs(modTorque[0]:y) + abs(modTorque[1]:y)) / 2).
+                set t:z to t:z + ((abs(modTorque[0]:z) + abs(modTorque[1]:z)) / 2).
+            }
+        }        
+    }
+    return t.
+}
+
+local minTorque is 0.00001.
+local function getAvailableTorque {
+    local torque is V(0,0,0).
+    // for provider in ship:torque:allProviders {
+    //     local moduleTorques is provider:availableTorque.
+    //     set torque:x to torque:x + ((abs(moduleTorques[0]:x) + abs(moduleTorques[1]:x)) / 2).
+    //     set torque:y to torque:y + ((abs(moduleTorques[0]:y) + abs(moduleTorques[1]:y)) / 2).
+    //     set torque:z to torque:z + ((abs(moduleTorques[0]:z) + abs(moduleTorques[1]:z)) / 2).   
+    // }
+    
+    // pitch
+    set torque:x to max(minTorque, torqueProvidedByPartsTagged("elevator"):x).
+    set torque:y to max(minTorque, torqueProvidedByPartsTagged("aileron"):y).
+    set torque:z to max(minTorque, torqueProvidedByPartsTagged("rudder"):z).
+    
+    movingAverageVecUpdate(torqueAvg, torque).
+
+    local mean is movingAverageVecMean(torqueAvg).
+
+    if (mean:x < minTorque) { set mean:x to 0. }
+    if (mean:y < minTorque) { set mean:y to 0. }
+    if (mean:z < minTorque) { set mean:z to 0. }
+    
+    return mean.
 }
 
 local function momentOfInertia {
-    local angMom is ship:angularMomentum.
-    local angVel is ship:angularVel.
-
-    return V(angMom:x / angVel:x, angMom:y / angVel:y, angMom:z / angVel:z).
-}
-
-local function pidLogHeader {
-    return "Time,Kp,Ki,Kd,Input,SetPoint,Err,PTerm,ITerm,DTerm,Output".
-}
-
-local function pidLogEntry {
-    parameter pid.
-    return time:seconds + ","
-        + pid:kp + ","
-        + pid:ki + ","
-        + pid:kd + ","
-        + pid:input + ","
-        + pid:setpoint + ","
-        + pid:error + ","
-        + pid:pterm + ","
-        + pid:iterm + ","
-        + pid:dterm + ","
-        + pid:output.
+    return ship:moi.
 }
 
 global function autopilotSetControls {
     parameter autopilot.
-    parameter targetSpeed.
-    parameter targetAltitude.
     parameter targetHeading.
+    parameter targetAltitude.
+    parameter targetSpeed.
 
-    local currentPotential is potentialEnergy(ship:altitude).
-    local currentKinetic is kineticEnergy(ship:altitude, ship:velocity:surface:mag).
-    local currentTotal is (currentPotential + currentKinetic) / ship:mass.
-    local currentRatio is currentPotential / (currentPotential + currentKinetic).
+    local energyControls is energyGetControls(autopilot:energyCtlr, targetAltitude, targetSpeed).
 
-    local desiredPotential is potentialEnergy(targetAltitude).
-    local desiredKinetic is kineticEnergy(targetAltitude, targetSpeed).
-    local desiredTotal is (desiredPotential + desiredKinetic) / ship:mass.
-    local desiredRatio is desiredPotential / (desiredPotential + desiredKinetic).
+    lock throttle to energyControls:throttle.
+    local targetPitch is energyControls:pitch.
 
-    logInfo("Target Speed: " + targetSpeed, 3).
-    logInfo("Speed: " + ship:velocity:surface:mag, 4).
-    logInfo("Desired Total: " + desiredTotal, 6).
-    logInfo("Total: " + currentTotal, 7).
-    logInfo("Total Err: " + (desiredTotal - currentTotal), 8).
-
-
-    logInfo("Target Altitude: " + targetAltitude, 1).
-    logInfo("Altitude: " + ship:altitude, 2).
-    logInfo("Desired Ratio: " + desiredRatio, 9).
-    logInfo("Ratio: " + currentRatio, 10).
-    logInfo("Ratio Err: " + (desiredRatio - currentRatio), 11).
-
-    local shipPitch is 90 - vAng(ship:up:forevector, ship:facing:forevector).
-    logInfo("Pitch: " + round(shipPitch, 3), 13).
-
-    local shipRoll is -(90-vAng(ship:up:forevector, -1 * ship:facing:starvector)).
-    logInfo("Roll: " + round(shipRoll, 3), 14).
+    local shipPitch is 90 - vAng(ship:up:forevector, ship:facing:forevector).    
+    local shipRoll is -(90 - vAng(ship:up:forevector, -1 * ship:facing:starvector)).
 
     local currentHeading is getShipHeading().
-    logInfo("Current heading: " + currentHeading, 15).
-    logInfo("Target heading: " + targetHeading, 16).
 
     local headingErr is headingError(currentHeading, targetHeading).
-
-    if not autopilot:lockRoll {
+    
+    local targetRoll is 0.
+    if ship:bounds:bottomaltradar > 10 {
         set autopilot:rollPid:setpoint to 0.
         set targetRoll to autopilot:rollPid:update(time:seconds, headingErr).
     }
 
-    set autopilot:throttlePid:setpoint to desiredTotal.
-    local throtLock is autopilot:throttlePid:update(time:seconds, currentTotal).
-    if (autopilot:writeLog) { log pidLogEntry(autopilot:throttlePid) to "0:/" + ship:name + "/ThrottlePid.csv". }
+    local pitchErr is targetPitch - shipPitch.
+    local rollErr is targetRoll - shipRoll.    
+    
+    logInfo("Target Pitch: " + round(targetPitch, 3), 3).
+    logInfo("Target Roll : " + round(targetRoll, 3), 4).
+    logInfo("Tgt Heading : " + round(targetHeading, 3), 5).
 
-    lock throttle to throtLock.
+    logInfo("Pitch Err   : " + round(pitchErr, 3), 7).
+    logInfo("Roll Err    : " + round(rollErr, 3), 8).
+    logInfo("Heading Err : " + round(headingErr, 3), 9).
 
-    set autopilot:pitchPid:setpoint to desiredRatio.
-    local targetPitch to autopilot:pitchPid:update(time:seconds, currentRatio).
-    if (autopilot:writeLog) { log pidLogEntry(autopilot:pitchPid) to "0:/" + ship:name + "/PitchPid.csv". }
+    local availableTorque is getAvailableTorque().
 
-    logInfo("Target Pitch: " + round(targetPitch, 3), 12).
+    local moi is momentOfInertia().
+
+    local stoppingTime is autopilot:stoppingTime.
+    local maxAngVel is V(
+        availableTorque:x * stoppingTime / moi:x,
+        availableTorque:y * stoppingTime / moi:y,
+        availableTorque:z * stoppingTime / moi:z
+    ).
+
+    if (autopilot:writeLog) { 
+        log time:seconds - autopilot:startTime + "," + maxAngVel:x + "," + maxAngVel:y + "," + maxAngVel:z + ","
+            + availableTorque:x + "," + availableTorque:y + "," + availableTorque:z + ","
+            + moi:x + "," + moi:y + "," + moi:z
+            to logFileName("Torque.csv").
+    }
+    
+    // get the target velocities
+    set autopilot:pitchRotPid:setpoint to 0.
+    set autopilot:pitchRotPid:maxoutput to maxAngVel:x.
+    set autopilot:pitchRotPid:minoutput to -maxAngVel:x.
+    local tgtPitchVel to autopilot:pitchRotPid:update(time:seconds, -pitchErr).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:pitchRotPid, autopilot:startTime) to logFileName("PitchRotPid.csv"). }
+
+    set autopilot:rollRotPid:setpoint to 0.
+    set autopilot:rollRotPid:maxoutput to maxAngVel:y.
+    set autopilot:rollRotPid:minoutput to -maxAngVel:y.
+    local tgtRollVel to autopilot:rollRotPid:update(time:seconds, -rollErr).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:rollRotPid, autopilot:startTime) to logFileName("RollRotPid.csv"). }
+
+    set autopilot:yawRotPid:setpoint to 0.
+    set autopilot:yawRotPid:maxoutput to maxAngVel:z.
+    set autopilot:yawRotPid:minoutput to -maxAngVel:z.
+    local tgtYawVel to autopilot:yawRotPid:update(time:seconds, -headingErr).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:yawRotPid, autopilot:startTime) to logFileName("YawRotPid.csv"). }
+
+    if abs(rollErr) > 0.1 {
+        set tgtYawVel to 0.
+    }
 
     local angVel is ship:angularVel.
-
     local rollAngVel is vDot(angVel, ship:facing:starvector).
     local pitchAngVel is vDot(angVel, ship:facing:forevector).
     local yawAngVel is vDot(angVel, ship:facing:upvector).
+    
+    logInfo("Cur AngVel: " + formatVec(V(pitchAngVel, rollAngVel, yawAngVel), 3), 20).
+    logInfo("Tgt AngVel: " + formatVec(V(tgtPitchVel, tgtRollVel, tgtYawVel), 3), 21).
+    logInfo("Available torque: " + formatVec(availableTorque, 3), 22).
+    logInfo("Max AngVel: " + formatVec(maxAngVel, 3), 23).
 
-    // actual controls
-    set autopilot:pitchRotPid:setpoint to targetPitch.
-    local tgtPitchVel to autopilot:pitchRotPid:update(time:seconds, shipPitch).
-    if (autopilot:writeLog) { log pidLogEntry(autopilot:pitchRotPid) to "0:/" + ship:name + "/PitchRotPid.csv". }
-
-    set autopilot:rollRotPid:setpoint to targetRoll.
-    local tgtRollVel to autopilot:rollRotPid:update(time:seconds, shipRoll).
-    if (autopilot:writeLog) { log pidLogEntry(autopilot:rollRotPid) to "0:/" + ship:name + "/RollRotPid.csv". }
-
-    set autopilot:yawRotPid:setpoint to 0.
-    local tgtYawVel to autopilot:yawRotPid:update(time:seconds, headingErr).
-    if (autopilot:writeLog) { log pidLogEntry(autopilot:yawRotPid) to "0:/" + ship:name + "/YawRotPid.csv". }
-
+    set autopilot:pitchCtlPid:ki to moi:x * (4.0 / autopilot:pitchTs) ^ 2.
+    set autopilot:pitchCtlPid:kp to 2 * (moi:x * autopilot:pitchCtlPid:ki) ^ 0.5.
+    set autopilot:pitchCtlPid:kd to 0.
+    set autopilot:pitchCtlPid:maxoutput to availableTorque:x.
+    set autopilot:pitchCtlPid:minoutput to -availableTorque:x.
     set autopilot:pitchCtlPid:setpoint to tgtPitchVel.
-    local ctlPitch to autopilot:pitchCtlPid:update(time:seconds, pitchAngVel).
-    if (autopilot:writeLog) { log pidLogEntry(autopilot:pitchCtlPid) to "0:/" + ship:name + "/PitchCtlPid.csv". }
+    local tgtPitchTorque to autopilot:pitchCtlPid:update(time:seconds, pitchAngVel).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:pitchCtlPid, autopilot:startTime) to logFileName("PitchCtlPid.csv"). }
 
+    set autopilot:rollCtlPid:ki to moi:y * (4.0 / autopilot:rollTs) ^ 2.
+    set autopilot:rollCtlPid:kp to 2 * (moi:y * autopilot:rollCtlPid:ki) ^ 0.5.
+    set autopilot:rollCtlPid:kd to 0.
+    set autopilot:rollCtlPid:maxoutput to availableTorque:y.
+    set autopilot:rollCtlPid:minoutput to -availableTorque:y.
     set autopilot:rollCtlPid:setpoint to tgtRollVel.
-    local ctlRoll to autopilot:rollCtlPid:update(time:seconds, rollAngVel).
-    if (autopilot:writeLog) { log pidLogEntry(autopilot:rollCtlPid) to "0:/" + ship:name + "/RollCtlPid.csv". }
+    local tgtRollTorque to autopilot:rollCtlPid:update(time:seconds, rollAngVel).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:rollCtlPid, autopilot:startTime) to logFileName("RollCtlPid.csv"). }
 
+    set autopilot:yawCtlPid:ki to moi:z * (4.0 / autopilot:yawTs) ^ 2.
+    set autopilot:yawCtlPid:kp to 2 * (moi:z * autopilot:yawCtlPid:ki) ^ 0.5.
+    set autopilot:yawCtlPid:kd to 0.
+    set autopilot:yawCtlPid:maxoutput to availableTorque:z.
+    set autopilot:yawCtlPid:minoutput to -availableTorque:z.
     set autopilot:yawCtlPid:setpoint to tgtYawVel.
-    local ctlYaw to autopilot:yawCtlPid:update(time:seconds, yawAngVel).
-    if (autopilot:writeLog) { log pidLogEntry(autopilot:yawCtlPid) to "0:/" + ship:name + "/YawCtlPid.csv". }
+    local tgtYawTorque to autopilot:yawCtlPid:update(time:seconds, yawAngVel).
+    if (autopilot:writeLog) { log pidLogEntry(autopilot:yawCtlPid, autopilot:startTime) to logFileName("YawCtlPid.csv"). }
 
     local ctl to ship:control.
-    set ctl:roll to ctlRoll.
 
-    set ctl:pitch to ctlPitch * cos(shipRoll).// + ctlYaw * sin(shipRoll).
-    set ctl:yaw to ctlYaw * cos(shipRoll).// + (ctlPitch * sin(shipRoll) * 0.1).
+    local torqueRatios is V(
+        tgtPitchTorque / availableTorque:x,
+        tgtRollTorque / availableTorque:y,
+        tgtYawTorque / availableTorque:z
+    ).
+    movingAverageVecUpdate(autopilot:controlAvg, torqueRatios).
+
+    local ctlMean is movingAverageVecMean(autopilot:controlAvg).
+    set ctl:pitch to ctlMean:x.
+    set ctl:roll to ctlMean:y.
+    set ctl:yaw to ctlMean:z.   
 
     wait 0.
 }

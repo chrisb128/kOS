@@ -6,6 +6,7 @@ global function createFlightPlan {
     parameter cruiseSpeed.
     parameter cruiseAltitude.
     parameter waypoints.
+    parameter origin.
     parameter destination.
     parameter climbSpeed.
     parameter climbRatio.
@@ -15,6 +16,7 @@ global function createFlightPlan {
         "cruiseSpeed", cruiseSpeed,
         "cruiseAltitude", cruiseAltitude,
         "waypoints", waypoints,
+        "origin", origin,
         "destination", destination,
         "climbSpeed", climbSpeed,
         "climbRatio", climbRatio,
@@ -57,22 +59,98 @@ global function getWaypointsBetween {
     return waypoints.
 }
 
+local function newVelocityEase {
+    parameter velocityToEase.
+    
+    local this is lexicon(
+        "velToEase", velocityToEase,
+        "targetValue", 0,
+        "targetSetTime", 0,
+        "startValue", 0
+    ).
+
+    local getCurrentValue is {
+        parameter _this.
+
+        if _this:targetSetTime = 0 {
+            return 0.
+        }
+
+        local currentVal is _this:velToEase * (time:seconds - _this:targetSetTime).
+
+        if (_this:targetValue > _this:startValue) {
+            return min(_this:targetValue, _this:startValue + currentVal).
+        } else {
+            return max(_this:targetValue, _this:startValue - currentVal).
+        }
+    }.
+    set this["getCurrentValue"] to getCurrentValue:bind(this).
+
+    local setTargetValue is {
+        parameter _this.
+        parameter targetValue.
+        parameter currentValue.
+
+        set _this:targetValue to targetValue.
+        set _this:startValue to currentValue.
+        set _this:targetSetTime to time:seconds.
+    }.
+    set this["setTargetValue"] to setTargetValue:bind(this).
+    
+    return this.
+}
+
 global function initNavigator {
     parameter plan.
 
-    return lexicon(
+    local this is lexicon(
         "plan", (plan),
-        "autopilot", initAutopilot(),
+        "autopilot", newAutopilot(),
         "target", ship:geoposition,
         "currentWaypoint", (-1),
         "waypointDistance", (-1),
         "mode", "idle",
-        "speed", 0,
-        "heading", 0,
-        "altitude", ship:altitude,
+        "speed", newVelocityEase(10),
+        "heading", newVelocityEase(1),
+        "altitude", newVelocityEase(50),
         "startPoint", ship:geoposition,
         "liftPoint", ship:geoposition
     ).
+
+    local setSpeed is {
+        parameter _this.
+        parameter speed.
+        
+        if (_this:speed:targetValue <> speed) {
+            _this:speed:setTargetValue(speed, ship:velocity:surface:mag).
+        }
+    }.
+
+    set this["setSpeed"] to setSpeed:bind(this).
+
+    local setHeading is {
+        parameter _this.
+        parameter heading.
+
+        if (_this:heading:targetValue <> heading) {
+            // _this:heading:setTargetValue(heading, getShipHeading()). 
+            // TODO: implement momentum based velocity easer
+            _this:heading:setTargetValue(heading, heading).
+        }
+    }.
+    set this["setHeading"] to setHeading:bind(this).
+
+    local setAltitude is {
+        parameter _this.
+        parameter altitude.
+
+        if (_this:altitude:targetValue <> altitude) {
+            _this:altitude:setTargetValue(altitude, ship:altitude).
+        }
+    }.
+    set this["setAltitude"] to setAltitude:bind(this).
+
+    return this.
 }
 
 local function closeTo {
@@ -85,6 +163,23 @@ global function navigatorSetWaypoint {
     parameter nav.
 
     local plan is nav:plan.
+    if (nav:mode = "ascend") {
+        set nav:target to plan:origin:end.
+
+        if (ship:bounds:bottomaltradar > 10) {
+            set nav:target to locationAfterDistanceAtHeading(plan:origin:end, plan:origin:end:heading, 5000).
+
+            if (nav:waypointDistance = -1) {
+                set nav:waypointDistance to distanceTo(plan:waypoints[0]:location).
+            }
+
+            if (distanceTo(plan:waypoints[0]:location) > nav:waypointDistance) {
+                set nav:mode to "cruise".
+            } else {
+                set nav:waypointDistance to distanceTo(plan:waypoints[0]:location).
+            }
+        }
+    }
     if (nav:mode = "cruise") {
         if  (nav:currentWaypoint < 0) {
             set nav:currentWaypoint to 0.
@@ -111,14 +206,13 @@ global function navigatorSetWaypoint {
 
     if (nav:currentWaypoint >= 0) {
         set nav:waypointDistance to distanceTo(nav:target).
-}
+    }
 }
 
 global function navigatorUpdateFlightMode {
     parameter nav.
 
     local plan is nav:plan.
-
 
     if (nav:mode = "ascend"
         and abs(plan:cruiseAltitude - ship:altitude) < 10) {
@@ -150,14 +244,14 @@ global function navigatorSetAutopilotParams {
 
     if (nav:mode = "ascend") {
         if (ship:bounds:bottomaltradar < 1) {
-            nav:autopilot:pitchPid:reset().
             nav:autopilot:pitchRotPid:reset().
             nav:autopilot:pitchCtlPid:reset().
         }
 
+        local pitchFloor is 15.
         setAutopilotPitchRange(nav:autopilot,
-            max(-20.0, min(7, 7-(ship:bounds:bottomaltradar / 20))),
-            min(20.0, max(7, ship:bounds:bottomaltradar / 20))).
+            max(-20.0, min(pitchFloor, pitchFloor-(ship:bounds:bottomaltradar / 20))),
+            min(20.0, max(pitchFloor, ship:bounds:bottomaltradar / 20))).
 
     } else if (nav:mode = "cruise") {
         setAutopilotPitchRange(nav:autopilot, -20, 20).
@@ -180,48 +274,50 @@ global function navigatorSetTargets {
     local plan is nav:plan.
 
     if (nav:mode = "ascend") {
-        if (nav:heading = 0) {
-            set nav:heading to getShipHeading().
+        if nav:heading:getCurrentValue() = 0 {
+            nav:setHeading(plan:origin:end:heading).
         }
+
         if (ship:bounds:bottomaltradar < 1) {
             set nav:liftPoint to ship:geoposition.
         }
 
-        set nav:speed to max(20, min(plan:climbSpeed, log10(1.4 + distanceTo(nav:startPoint) / plan:throttleRatio) * plan:climbSpeed)).
-        set nav:altitude to max(nav:liftPoint:terrainHeight, min(plan:cruiseAltitude, (distanceTo(nav:liftPoint) / plan:climbRatio) + nav:liftPoint:terrainHeight)).
+        nav:setSpeed(plan:climbSpeed).
+        nav:setAltitude(plan:cruiseAltitude).
     }
     else if (nav:mode = "cruise") {
         local waypoint is plan:destination:approach.
-        if (nav:currentWaypoint < plan:waypoints:length)
+        if (nav:currentWaypoint < plan:waypoints:length) {
             set waypoint to plan:waypoints[nav:currentWaypoint].
+        }
 
-        set nav:heading to waypoint:location:heading.
-        set nav:speed to waypoint:speed.
-        set nav:altitude to waypoint:altitude.
+        nav:setHeading(waypoint:location:heading).
+        nav:setSpeed(waypoint:speed).
+        nav:setAltitude(waypoint:altitude).
     }
     else if (nav:mode = "approach") {
-        set nav:heading to nav:target:heading.
-        set nav:altitude to min(plan:cruiseAltitude, max(plan:destination:start:terrainheight, plan:destination:start:terrainheight + distanceTo(plan:destination:start) / 10)).
-        set nav:speed to max(50, min(plan:cruiseSpeed, 50 + distanceTo(plan:destination:start) / 60)).
+        nav:setHeading(nav:target:heading).
+        nav:setAltitude(min(plan:cruiseAltitude, max(plan:destination:start:terrainheight, plan:destination:start:terrainheight + distanceTo(plan:destination:start) / 10))).
+        nav:setSpeed(max(50, min(plan:cruiseSpeed, 50 + distanceTo(plan:destination:start) / 60))).
 
         if (not closeTo(plan:destination:start)) {
             local correction is (plan:destination:end:heading - plan:destination:start:heading) * -10.
-            set nav:heading to nav:heading + correction.
+            nav:setHeading(nav:target:heading + correction).
         }
 
         if (distanceTo(plan:destination:start) < 500) {
             set nav:target to plan:destination:end.
-            set nav:altitude to plan:destination:start:terrainheight.
+            nav:setAltitude(plan:destination:start:terrainheight).
         }
     } else if (nav:mode = "land") {
-        set nav:altitude to plan:destination:end:terrainheight.
-        set nav:heading to plan:destination:end:heading.
-        set nav:speed to min(nav:speed, max(50, ship:bounds:bottomaltradar)).
+        nav:setAltitude(plan:destination:end:terrainheight).
+        nav:setHeading(plan:destination:end:heading).
+        nav:setSpeed(min(nav:speed, max(50, ship:bounds:bottomaltradar))).
 
     } else if (nav:mode = "break") {
-        set nav:altitude to plan:destination:end:terrainheight.
-        set nav:heading to plan:destination:end:heading.
-        set nav:speed to 0.
+        nav:setAltitude(plan:destination:end:terrainheight).
+        nav:setHeading(plan:destination:end:heading).
+        nav:setSpeed(0).
     }
 }
 
