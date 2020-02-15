@@ -5,6 +5,7 @@ run once ascent.
 run once maneuvers.
 run once inclination.
 run once hohmann.
+run once rendezvous.
 
 // MISSION 
 global function newMission {
@@ -41,7 +42,8 @@ global MissionStepTypes is lexicon(
     "AddNodeMatchInclination", missionStepTypeAddNodeMatchInclination(),
     "AddNodeRendezvousTransfer", missionStepTypeAddNodeRendezvousTransfer(),
     "WarpToSoi", missionStepTypeWarpToSoi(),
-    "GoToStep", missionStepTypeGoToStep()
+    "GoToStep", missionStepTypeGoToStep(),
+    "AutoRendezvous", missionStepTypeAutoRendezvous()
 ).
 
 global function missionDeserialize {
@@ -354,6 +356,40 @@ local function missionStepTypeGoToStep {
         parameter step.
 
         set mission:currentStep to step - 1.  // subtract one, because the mission executer will increment at the end of the step
+    }.
+
+    return this.
+}
+
+local function missionStepTypeAutoRendezvous {
+    local this is missionStepType("AutoRendezvous", "Auto-rendezvous with target vessel").
+
+    set this["execute"] to {
+        parameter mission.
+        parameter step.
+
+        set tgt to vessel(step:params:target).
+
+        addMatchInclinationNode(tgt).
+        executeNode().
+        
+        addRendezvousTransferNode(tgt).
+        executeNode().
+        wait 1.
+
+        addMatchVelocityAtClosestApproachNode(tgt).
+        executeNode(true, 10, false).
+        wait 1.
+        
+        if (tgt:velocity:orbit - ship:velocity:orbit):mag > 0.5 {
+            addMatchVelocityAtClosestApproachNode(tgt).
+            executeNode(true, 10, false).
+            wait 1.
+        }
+
+        if (tgt:position:mag > step:params:distance) {
+            closeDistanceToTarget(tgt, step:params:distance).
+        }
     }.
 
     return this.
