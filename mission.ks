@@ -179,7 +179,7 @@ local function missionStepTypeAscent {
             enableAutoStager().
         }
 
-        ascent(step:params:targetAp).
+        ascent(step:params).
 
         if (step:params:deployFairings) {
             deployFairings().
@@ -203,9 +203,11 @@ local function missionStepTypeAscent {
 
 global function newAscentOptions {
     parameter targetAp.
+    parameter roll is 0.
 
     return lexicon(
         "targetAp", targetAp,
+        "roll", roll,
         "autoStage", true,
         "deployFairings", true,
         "deploySolarPanels", true,

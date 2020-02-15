@@ -2,7 +2,9 @@ run once logging.
 run once math.
 
 declare function ascent {
-    parameter targetAp.
+    parameter options.
+
+    local targetAp is options:targetAp.
     
     set doAutoWarp to true.
     set accelerationLimit to 15.
@@ -17,8 +19,8 @@ declare function ascent {
         return 1 - p ^ (1 / s).
     }
 
-    
-    local steerLock to heading(90, 90).
+
+    local steerLock to heading(90, 90, options:roll).
     local throttleLock to 1.
 
     lock steering to steerLock.
