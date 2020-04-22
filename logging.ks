@@ -39,23 +39,51 @@ global function logFileName {
     return "0:/" + ship:name + "/" + logName.
 }
 
+global function initLog {
+    parameter fileName.
+    if exists(logFileName(fileName)) { deletePath(logFileName(fileName)). }
+}
+
+global function initPidLog {
+    parameter fileName.
+    initLog(fileName).
+    log pidLogHeader() to logFileName(fileName).
+}
+
+
 global function pidLogHeader {
     return "Time,Kp,Ki,Kd,Input,SetPoint,Err,PTerm,ITerm,DTerm,Output".
+}
+
+global function joinString {
+    parameter list, delim.
+
+    local s is "".
+    from { local i is 0. } until (i >= list:length) step { set i to i + 1. } do {
+        if (i > 0) {
+            set s to s + delim.
+        }
+
+        set s to s + list[i].
+    }
+
+    return s.
 }
 
 global function pidLogEntry {
     parameter pid.
     parameter startTime.
 
-    return time:seconds - startTime + ","
-        + pid:kp + ","
-        + pid:ki + ","
-        + pid:kd + ","
-        + pid:input + ","
-        + pid:setpoint + ","
-        + pid:error + ","
-        + pid:pterm + ","
-        + pid:iterm + ","
-        + pid:dterm + ","
-        + pid:output.
+    return joinString(list(
+        time:seconds - startTime,
+        pid:kp,
+        pid:ki,
+        pid:kd,
+        pid:input,
+        pid:setpoint,
+        pid:error,
+        pid:pterm,
+        pid:iterm,
+        pid:dterm,
+        pid:output), ",").
 }

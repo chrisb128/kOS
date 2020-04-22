@@ -2,29 +2,42 @@ run once logging.
 local writeLog to true.
 
 global function newEnergyController {
+
     // input - potential + kinetic energy
     // output - throttle ctl
-    local throttlePid is pidLoop(0.005, 0.000, 0.001, 0, 1).
+    local throttlePid is pidLoop(0.005, 0.00005, 0.000, 0, 1).
 
-    // input - potential / potential + kinetic energy
+    // input - potential / kinetic energy
     // output - target pitch
-    local pitchPid is pidLoop(50, 10, 0, -15, 15).
+    local pitchPid is pidLoop(25, 0.025, 1, -20, 20).
 
-    if (writeLog) {
-        if exists(logFileName("ThrottlePid.csv")) { deletePath(logFileName("ThrottlePid.csv")). }
-        log pidLogHeader() to logFileName("ThrottlePid.csv").
 
-        if exists(logFileName("PitchPid.csv")) { deletePath(logFileName("PitchPid.csv")). }
-        log pidLogHeader() to logFileName("PitchPid.csv").
-    }
-
-    return lexicon(
+    local this is lexicon(
         "throttlePid", throttlePid,
         "pitchPid", pitchPid,
+        "currentTotal", 0,
+        "currentRatio", 0,
+        "desiredTotal", 0,
+        "desiredRatio", 0,
         "writeLog", writeLog,
         "startTime", time:seconds
     ).
+
+    local initLogs is { parameter _this. energyInitLogs(_this).}.
+    set this:initLogs to initLogs:bind(this).
+
+    local writeLogs is { parameter _this, startTime. energyWriteLogs(_this, startTime).}.
+    set this:writeLogs to writeLogs:bind(this).
+
+    local getControls is { parameter _this, tgtAlt, tgtSpeed. return energyGetControls(_this, tgtAlt, tgtSpeed).}.
+    set this:getControls to getControls:bind(this).
+
+    local setPitchRange is { parameter _this, min, max. return energySetPitchRange(_this, min, max). }.
+    set this:setPitchRange to setPitchRange:bind(this).
+
+    return this.
 }
+
 
 local function potentialEnergy {
     parameter alt.
@@ -41,41 +54,53 @@ local function kineticEnergy {
     return (ship:mass * speed^2) / (2 * bodyG).
 }
 
-global function energyGetControls {
-    parameter ctlr.
+local function energyGetControls {
+    parameter this.
     parameter targetAltitude.
     parameter targetSpeed.
 
     local currentPotential is potentialEnergy(ship:altitude).
     local currentKinetic is kineticEnergy(ship:altitude, ship:velocity:surface:mag).
-    local currentTotal is (currentPotential + currentKinetic) / ship:mass.
-    local currentRatio is currentPotential / currentKinetic.
+    set this:currentTotal to (currentPotential + currentKinetic) / ship:mass.
+    set this:currentRatio to currentPotential / currentKinetic.
 
     local desiredPotential is potentialEnergy(targetAltitude).
     local desiredKinetic is kineticEnergy(targetAltitude, targetSpeed).
-    local desiredTotal is (desiredPotential + desiredKinetic) / ship:mass.
-    local desiredRatio is desiredPotential / desiredKinetic.
+    set this:desiredTotal to (desiredPotential + desiredKinetic) / ship:mass.
+    set this:desiredRatio to desiredPotential / desiredKinetic.
 
-    local totalError is desiredTotal - currentTotal.
-    local ratioError is desiredRatio - currentRatio.
+    local totalError is this:desiredTotal - this:currentTotal.
+    local ratioError is this:desiredRatio - this:currentRatio.
 
-    logInfo("Target Speed   : " + round(targetSpeed, 3), 11).
-    logInfo("Target Altitude: " + round(targetAltitude, 3), 12).
-    logInfo("Target Total   : " + round(desiredTotal, 3), 13).
-    logInfo("Target Ratio   : " + round(desiredRatio, 3), 14).
+    set this:throttlePid:setpoint to 0.
+    local throtLock is this:throttlePid:update(time:seconds, -totalError).
+
+    set this:pitchPid:setpoint to 0.
+    local targetPitch to this:pitchPid:update(time:seconds, -ratioError).
     
-    logInfo("Speed Err      : " + round(targetSpeed - ship:velocity:surface:mag, 3), 15).
-    logInfo("Altitude Err   : " + round(targetAltitude - ship:altitude, 3), 16).
-    logInfo("Total Err      : " + round(totalError, 3), 17).
-    logInfo("Ratio Err      : " + round(ratioError, 3), 18).
-
-    set ctlr:throttlePid:setpoint to 0.
-    local throtLock is ctlr:throttlePid:update(time:seconds, -totalError).
-    if (ctlr:writeLog) { log pidLogEntry(ctlr:throttlePid, ctlr:startTime) to logFileName("ThrottlePid.csv"). }
-
-    set ctlr:pitchPid:setpoint to 0.
-    local targetPitch to ctlr:pitchPid:update(time:seconds, -ratioError).
-    if (ctlr:writeLog) { log pidLogEntry(ctlr:pitchPid, ctlr:startTime) to logFileName("PitchPid.csv"). }
-
     return lexicon("throttle", throtLock, "pitch", targetPitch).
 }
+
+local function energySetPitchRange {
+    parameter this, min, max.
+
+    set this:pitchPid:minOutput to min.
+    set this:pitchPid:maxOutput to max.
+}
+
+local function energyInitLogs {
+    parameter this.
+    
+    if (writeLog) {
+        initPidLog("ThrottlePid.csv").
+        initPidLog("EnergyPitchPid.csv").
+    }
+}
+
+local function energyWriteLogs {
+    parameter this, startTime.
+
+    if (this:writeLog) { log pidLogEntry(this:throttlePid, startTime) to logFileName("ThrottlePid.csv"). }
+    if (this:writeLog) { log pidLogEntry(this:pitchPid, startTime) to logFileName("EnergyPitchPid.csv"). }
+}
+
