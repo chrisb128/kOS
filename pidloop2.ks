@@ -44,14 +44,14 @@ global function pidLoop2 {
 local function pidUpdate {
     parameter this, t, input, setPoint, maxOut.
     
-    set this:maxOutput to maxOut.
-    set this:minOutput to -maxOut.
+    set this:maxOutput to abs(maxOut).
+    set this:minOutput to -abs(maxOut).
 
     local error is setPoint - input.
     local pTerm is error * this:kp.
     local iTerm is 0.
     local dTerm is 0.
-    local dt is 0.10.
+    local dt is 0.02.
 
     if (this:prevTime > 0) {
         set dt to t - this:prevTime.

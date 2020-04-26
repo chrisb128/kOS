@@ -1,16 +1,19 @@
+run once ease.
 run once energy.
 run once attitude.
 run once navigator.
 
+
 global function initAutopilot {
-    parameter plan.
+    parameter plan, cfg.
 
     local this is lexicon(
-        "plan", plan,
-        "nav", initNavigator(plan),
+        "plan", (plan),
+        "cfg", (cfg),
+        "nav", initNavigator(plan, cfg),
         "energy", newEnergyController(),
-        "attitude", attitudeController(),
-        "rollCtl", pidLoop(1.0, 0.1, 0, -30, 30),
+        "attitude", attitudeController(cfg),
+        "rollCtl", pidLoop(cfg:rollResponse * 1.0, cfg:rollResponse * 0.05, cfg:rollResponse * 0.5, -cfg:rollRange, cfg:rollRange),
         "pitchAvg", newMovingAverage(5),
         "throttle", 0,
         "startTime", time:seconds
@@ -38,18 +41,18 @@ local function autopilotDrive {
     local energy is this:energy.
     local attitude is this:attitude.    
     
-    nav:setWaypoint().
-    nav:setTargets().
-
     if (nav:mode = "idle") {
         return.
     }
 
-    local pitch is 0.
-    local roll is 0.
+    nav:setWaypoint().
+    nav:setTargets().
     local head is nav:heading:getCurrentValue().
     local tgtAlt is nav:altitude:getCurrentValue().
     local speed is nav:speed:getCurrentValue().
+
+    local pitch is 0.
+    local roll is 0.
 
     local phi is attitude:phiVector.
     
@@ -59,31 +62,37 @@ local function autopilotDrive {
     
     local ctls is energy:getControls(tgtAlt, speed).
     set this:throttle to ctls:throttle.
-    if (nav:mode = "ascend") {
-        local minPitch is 6.
-        local maxPitch is 20.
 
-        local pitchRange is max(minPitch, min((ship:bounds:bottomaltradar / 4) + minPitch, maxPitch)).
-        energy:setPitchRange(-pitchRange, pitchRange).
-        set roll to 0.
+    if (nav:mode = "ascend") {
+        local minPitch is this:cfg:ascentMinPitch.
+        local maxPitchRange is this:cfg:pitchRange.
+
+        if (ship:bounds:bottomaltradar < 10) {
+            set roll to 0.
+        }
+
+        local maxPitch is max(minPitch, min((ship:bounds:bottomaltradar / 4) + minPitch, maxPitchRange)).
+        energy:setPitchRange(minPitch, maxPitch).
+    } else if (nav:mode = "cruise") {
+        energy:setPitchRange(-this:cfg:pitchRange, this:cfg:pitchRange).
     } else if (nav:mode = "approach") {
-        energy:setPitchRange(-10, 5).
+        energy:setPitchRange(-this:cfg:pitchRange / 2, this:cfg:pitchRange / 4).
     } else if (nav:mode = "land") {
         set this:throttle to 0.
-        energy:setPitchRange(-5, 0).
+        energy:setPitchRange(-5, 1).
     } else if (nav:mode = "break") {
+        energy:setPitchRange(0, 1).
         set this:throttle to 0.
     }
-
 
     this:pitchAvg:update(ctls:pitch).
     set pitch to this:pitchAvg:mean().
 
-    set attitude:target to heading(shipHead, pitch, roll).
+    set attitude:target to heading(getShipHeading(), pitch, roll).
 
-    local actuation is attitude:drive().    
-
-    set ship:control:pitch to actuation:x * cos(roll).
+    local actuation is attitude:drive().
+    
+    set ship:control:pitch to actuation:x.
     set ship:control:roll to actuation:y.
     set ship:control:yaw to actuation:z.
 
@@ -98,17 +107,20 @@ local function autopilotDrive {
     log joinString(
         list(t - this:startTime,
             pitch,
-            roll,
-            head,
-            speed,
             pitch + phi:x * constant:radtodeg,
-            roll + phi:y * constant:radtodeg,
-            head + phi:z * constant:radtodeg,
-            ship:velocity:surface:mag,
             phi:x * constant:radtodeg,
+            roll,
+            roll + phi:y * constant:radtodeg,
             phi:y * constant:radtodeg,
-            phi:z * constant:radtodeg,
-            speed - ship:velocity:surface:mag), ",") to logFileName("TestPilot.csv").
+            head,
+            getShipHeading(),
+            headingErr,
+            speed,
+            ship:velocity:surface:mag,
+            speed - ship:velocity:surface:mag,
+            tgtAlt,
+            ship:altitude,
+            tgtAlt - ship:altitude), ",") to logFileName("TestPilot.csv").
 
     logInfo("Nav Mode    : " + nav:mode, 1).
 
@@ -116,31 +128,37 @@ local function autopilotDrive {
     logInfo("Tgt Roll    : " + round(roll, 3), 4).
     logInfo("Tgt Heading : " + round(head, 3), 5).
 
-    logInfo("Pitch Err   : " + round(phi:x * constant:radtodeg, 3), 6).
-    logInfo("Roll Err    : " + round(phi:y * constant:radtodeg, 3), 7).
     logInfo("Heading Err : " + round(headingErr, 3), 8).
-    logInfo("Yaw Err     : " + round(phi:z * constant:radtodeg, 3), 9).
+    logInfo("Phi : " + formatVec(attitude:phiVector, 3), 9).
+    logInfo("Axis : " + formatVec(attitude:axis, 0), 10).
+
+    logInfo("Angular Vel : " + formatVec(attitude:omega, 3), 11).
+    logInfo("Tgt Ang Vel : " + formatVec(attitude:targetOmega, 3), 12).
+    logInfo("Ctl Torque  : " + formatVec(attitude:controlTorque, 3), 13).
+    logInfo("Tgt Torque  : " + formatVec(attitude:targetTorque, 3), 14).
+    logInfo("MOI         : " + formatVec(attitude:moi, 3), 15).
+    local moiOverTorque is V(
+        attitude:moi:x/attitude:controlTorque:x,
+        attitude:moi:y/attitude:controlTorque:y,
+        attitude:moi:z/attitude:controlTorque:z).
+    logInfo("MOI/Torque  : " + formatVec(moiOverTorque, 3), 16).
+
 
     local waypointIndex is min(plan:waypoints:length, max(0, nav:currentWaypoint)).
     if (nav:mode = "approach") {        
-        logInfo("Waypoint #  : Approach", 10).
-        logInfo("Bearing to  : " + round(plan:destination:start:heading, 3), 11).
-        logInfo("Distance to : " + round(distanceTo(plan:destination:start), 3), 12).
+        logInfo("Waypoint #  : Approach", 17).
+        logInfo("Bearing to  : " + round(plan:destination:start:heading, 3), 18).
+        logInfo("Distance to : " + round(distanceTo(plan:destination:start), 3), 19).
     } else if (nav:mode = "land") {
-        logInfo("Waypoint #  : Runway", 10).
-        logInfo("Bearing to  : " + round(plan:destination:end:heading, 3), 11).
-        logInfo("Distance to : " + round(distanceTo(plan:destination:end), 3), 12).
+        logInfo("Waypoint #  : Runway", 17).
+        logInfo("Bearing to  : " + round(plan:destination:end:heading, 3), 18).
+        logInfo("Distance to : " + round(distanceTo(plan:destination:end), 3), 19).
     } else if (waypointIndex < plan:waypoints:length) {
         local waypoint is plan:waypoints[waypointIndex].
-        logInfo("Waypoint #  : " + waypointIndex, 10).
-        logInfo("Bearing to  : " + round(waypoint:location:heading, 3), 11).
-        logInfo("Distance to : " + round(distanceTo(waypoint:location), 3), 12).
+        logInfo("Waypoint #  : " + waypointIndex, 17).
+        logInfo("Bearing to  : " + round(waypoint:location:heading, 3), 18).
+        logInfo("Distance to : " + round(distanceTo(waypoint:location), 3), 19).
     } 
-
-    logInfo("Angular Vel : " + formatVec(attitude:omega, 3), 16).
-    logInfo("Tgt Ang Vel : " + formatVec(attitude:targetOmega, 3), 17).
-    logInfo("Tgt Torque  : " + formatVec(attitude:targetTorque, 3), 18).
-    
     logInfo("Target Speed   : " + round(speed, 3), 20).
     logInfo("Target Altitude: " + round(tgtAlt, 3), 21).
     logInfo("Target Total   : " + round(energy:desiredTotal, 3), 22).
@@ -159,5 +177,5 @@ local function autopilotInitLogs {
     this:attitude:initLogs().
     
     initLog("TestPilot.csv").
-    log "Time,TgtPitch,TgtRoll,TgtHead,TgtSpeed,Pitch,Roll,Head,Speed,PitchErr,RollErr,HeadErr,SpeedErr" to logFileName("TestPilot.csv").
+    log "Time,TgtPitch,Pitch,PitchErr,TgtRoll,Roll,RollErr,TgtHead,Head,HeadErr,TgtSpeed,Speed,SpeedErr,TgtAltitude,Altitude,AltitudeErr" to logFileName("TestPilot.csv").
 }

@@ -5,11 +5,11 @@ global function newEnergyController {
 
     // input - potential + kinetic energy
     // output - throttle ctl
-    local throttlePid is pidLoop(0.005, 0.00005, 0.000, 0, 1).
+    local throttlePid is pidLoop(0.01, 0.001, 0.01, 0, 1).
 
     // input - potential / kinetic energy
     // output - target pitch
-    local pitchPid is pidLoop(25, 0.025, 1, -20, 20).
+    local pitchPid is pidLoop(20, 0.05, 0, -20, 20).
 
 
     local this is lexicon(

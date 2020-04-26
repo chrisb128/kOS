@@ -1,7 +1,8 @@
 run once moving_average.
+run once pidloop2.
 
 global function newTorquePI {
-  local pid is pidLoop().
+  local pid is pidLoop2(0,0,0).
 
   local this is lexicon(
     "pid", pid,
@@ -38,15 +39,10 @@ local function torquePIUpdate {
 
   set this:i to moi.
 
-  set this:pid:ki to moi * (4 / this:ts).
-  set this:pid:kp to 2 * (sqrt(moi * this:pid:ki)).
+  this:pid:setKi(moi * (4 / this:ts)).
+  this:pid:setKp(2 * (sqrt(moi * this:pid:ki))).
 
-  set this:pid:maxoutput to abs(maxOutput).
-  set this:pid:minoutput to -abs(maxOutput).
-
-  set this:pid:setpoint to setPoint.
-
-  return this:pid:update(time:seconds, input).
+  return this:pid:update(time:seconds, input, setPoint, maxOutput).
 }
 
 local function torquePISetTr {

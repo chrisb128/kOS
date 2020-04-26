@@ -8,19 +8,20 @@ local epsilon is 10^(-16).
 local writeLog is true.
 
 global function attitudeController {
+    parameter cfg.
   
     local pitchPI is newTorquePI().
     local rollPI is newTorquePI().
     local yawPI is newTorquePI().
 
-    local rateScale is 1.0.
+    local rateScale is cfg:attitudeResponse.
 
     local ratePScale is 1.0.
-    local rateIScale is 0.05.
-    local rateDScale is 2.0.
+    local rateIScale is 0.1.
+    local rateDScale is 0.0.
 
     local pitchScale is 1.0.
-    local rollScale is 0.5.
+    local rollScale is 1.0.
     local yawScale is 1.0.
 
     local pitchRatePI is pidLoop2(pitchScale * rateScale * ratePScale, pitchScale * rateScale * rateIScale, pitchScale * rateScale * rateDScale, true).
@@ -31,16 +32,19 @@ global function attitudeController {
     set yawRatePI:setpoint to 0.
 
     local this is lexicon(
+        "cfg", (cfg),
         "pitchPI", pitchPI,
         "rollPI", rollPI,
         "yawPI", yawPI,
         "pitchRatePI", pitchRatePI,
         "rollRatePI", rollRatePI,
         "yawRatePI", yawRatePI,
+        "rollControlRange", 5.0,
 
         "actuation", V(0,0,0),
         "targetTorque", V(0,0,0),
         "omega", V(0,0,0),
+        "moi", V(0,0,0),
 
         "phiTotal", 0.0,
         "phiVector", V(0,0,0),
@@ -49,10 +53,6 @@ global function attitudeController {
         "controlTorque", V(0,0,0),
         "axis", V(1,1,1),
         
-        "stoppingTimePitch", 1.0,
-        "stoppingTimeRoll", 0.25,
-        "stoppingTimeYaw", 1.0,
-
         "target", ship:facing,
 
         "startTime", time:seconds,
@@ -98,9 +98,17 @@ local function attitudeDrive {
 local function _updateLocalState {
     parameter this.
 
-    set this:omega to -ship:angularvel.
-    set this:controlTorque to getAvailableTorque().
-    set this:moi to momentOfInertia().
+    local face is ship:controlpart:facing.
+    local omega is -ship:angularvel.
+    set this:omega:x to vDot(face:starvector, omega).
+    set this:omega:y to vDot(face:forevector, omega).
+    set this:omega:z to -vDot(face:topvector, omega).
+    
+    local controlTorque is getAvailableTorque().
+    set this:controlTorque to controlTorque.
+
+    local moi is momentOfInertia().
+    set this:moi to moi.
 }
 
 local function _updatePredictionPi {
@@ -109,13 +117,21 @@ local function _updatePredictionPi {
     local phiVector is _phiVector(this).
     set this:phiVector to phiVector.
 
-    set this:maxOmega:x to ((this:controlTorque:x * this:stoppingTimePitch) / this:moi:x).
-    set this:maxOmega:y to ((this:controlTorque:y * this:stoppingTimeRoll) / this:moi:y).
-    set this:maxOmega:z to ((this:controlTorque:z * this:stoppingTimeYaw) / this:moi:z).
+    local phiTotal is _phiTotal(this).
+    set this:phiTotal to phiTotal.
+
+    set this:maxOmega:x to ((this:controlTorque:x * this:cfg:stoppingTime) / this:moi:x).
+    set this:maxOmega:y to ((this:controlTorque:y * this:cfg:stoppingTime) / this:moi:y).
+    set this:maxOmega:z to ((this:controlTorque:z * this:cfg:stoppingTime) / this:moi:z).
     
     set this:targetOmega:x to this:pitchRatePi:update(time:seconds, -phiVector:x, 0, this:maxOmega:x).
     set this:targetOmega:y to this:rollRatePi:update(time:seconds, -phiVector:y, 0, this:maxOmega:y).
     set this:targetOmega:z to this:yawRatePi:update(time:seconds, -phiVector:z, 0, this:maxOmega:z).
+
+    if (abs(this:phiTotal) > this:rollControlRange * constant:degtorad) {
+        set this:targetOmega:y to 0.
+        this:rollRatePi:reset().
+    }
 
     set this:targetTorque:x to this:pitchPi:update(this:omega:x, this:targetOmega:x, this:moi:x, this:controlTorque:x).
     set this:targetTorque:y to this:rollPi:update(this:omega:y, this:targetOmega:y, this:moi:y, this:controlTorque:y).
@@ -160,14 +176,27 @@ local function _getControls {
     return this:actuation.
 }
 
+local function _phiTotal {
+    parameter this.
+
+    local face is ship:controlpart:facing.
+    local phiTotal is vAng(face:forevector, this:target:forevector) * constant:degtorad.
+    if (vAng(face:upvector, this:target:forevector) > 90) {
+        set phiTotal to -phiTotal.
+    }
+
+    return phiTotal.
+}
+
 local function _phiVector {
     parameter this.
 
     local phi is V(0,0,0).
 
-    local vesselTop is ship:facing:upvector.
-    local vesselForward is ship:facing:forevector.
-    local vesselStarboard is ship:facing:starvector.
+    local face is ship:controlpart:facing.
+    local vesselTop is face:upvector.
+    local vesselForward is face:forevector.
+    local vesselStarboard is face:starvector.
 
     local targetForward is this:target:forevector.
     local targetTop is this:target:upvector.
@@ -184,9 +213,44 @@ local function _phiVector {
     if (vAng(vesselStarboard, vXcl(vesselTop, targetForward)) > 90) {
         set phi:z to -phi:z.
     }
+
+    // local face is ship:controlpart:facing.
+    // local tgtLocalUp is -face * this:target * V(0, 0, 1).
+    // local curLocalUp is V(0, 1, 0).
+    // local turnAngle is abs(vAng(curLocalUp, tgtLocalUp)).
+    // local rotDirection is v2d(tgtLocalUp:x, tgtLocalUp:z).
+    // set rotDirection to rotDirection:normalized():times(turnAngle).
     
 
+    // local normVec is vCrs(this:target * V(0, 0, 1), face:upvector).
+    // local tgtDeRotated is angleAxis(turnAngle, normVec) * this:target.
+
+    // local rollErr is vAng(face:starvector, tgtDeRotated * V(1, 0, 0)) 
+    //                     * signOf(vDot(tgtDeRotated * V(1, 0, 0), face:forevector)).
+
+    // local phi is V(
+    //     rotDirection:times(-1):y * constant:degtorad,
+    //     rollErr * constant:degtorad,
+    //     rotDirection:x * constant:degtorad
+    // ).
+
     return phi.
+}
+
+local function v2d {
+    parameter x, y.
+    local this is lexicon("x", x, "y", y).
+
+    local mag is { parameter _this. return sqrt(_this:x^2 + _this:y^2). }.
+    set this:mag to mag:bind(this).
+
+    local normalized is { parameter _this. return _this:times(1 / this:mag()). }.
+    set this:normalized to normalized:bind(this).
+
+    local times is { parameter _this, a. return v2d(_this:x * a, _this:y * a). }.
+    set this:times to times:bind(this).
+
+    return this.
 }
 
 
@@ -217,3 +281,10 @@ local function attitudeWriteLogs {
         log pidLogEntry(this:yawRatePi, startTime) to logFileName("YawRatePi.csv").
     }
 }
+
+
+local function signOf {
+    parameter x.
+    if x = 0 { return 0. }
+    return x / abs(x).
+}.

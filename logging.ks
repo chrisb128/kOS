@@ -23,7 +23,7 @@ declare function formatVec {
     parameter v.
     parameter r is 0.
 
-    return "V(" + round(v:x, r) + ", " + round(v:y, r) + ", " + round(v:z, r) + ")".
+    return "|"+round(v:mag, r)+"|V(" + round(v:x, r) + "," + round(v:y, r) + "," + round(v:z, r) + ")".
 }
 
 declare function formatLatLng {
