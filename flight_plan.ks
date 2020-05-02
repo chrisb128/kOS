@@ -29,6 +29,16 @@ global function createWaypoint {
     return this.
 }
 
+global function nextWaypoint {
+    parameter prev.
+    parameter head.
+    parameter dist.
+    parameter speed.
+    parameter tgtAlt.
+
+    return createWaypoint(speed, tgtAlt, locationAfterDistanceAtHeading(prev:location, head, dist)).
+}
+
 global function getWaypointsBetween {
     parameter start.
     parameter finish.

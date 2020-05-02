@@ -129,8 +129,8 @@ local function _updatePredictionPi {
     set this:targetOmega:z to this:yawRatePi:update(time:seconds, -phiVector:z, 0, this:maxOmega:z).
 
     if (abs(this:phiTotal) > this:rollControlRange * constant:degtorad) {
-        set this:targetOmega:y to 0.
-        this:rollRatePi:reset().
+        set this:targetOmega:z to 0.
+        this:yawRatePi:reset().
     }
 
     set this:targetTorque:x to this:pitchPi:update(this:omega:x, this:targetOmega:x, this:moi:x, this:controlTorque:x).
@@ -213,26 +213,6 @@ local function _phiVector {
     if (vAng(vesselStarboard, vXcl(vesselTop, targetForward)) > 90) {
         set phi:z to -phi:z.
     }
-
-    // local face is ship:controlpart:facing.
-    // local tgtLocalUp is -face * this:target * V(0, 0, 1).
-    // local curLocalUp is V(0, 1, 0).
-    // local turnAngle is abs(vAng(curLocalUp, tgtLocalUp)).
-    // local rotDirection is v2d(tgtLocalUp:x, tgtLocalUp:z).
-    // set rotDirection to rotDirection:normalized():times(turnAngle).
-    
-
-    // local normVec is vCrs(this:target * V(0, 0, 1), face:upvector).
-    // local tgtDeRotated is angleAxis(turnAngle, normVec) * this:target.
-
-    // local rollErr is vAng(face:starvector, tgtDeRotated * V(1, 0, 0)) 
-    //                     * signOf(vDot(tgtDeRotated * V(1, 0, 0), face:forevector)).
-
-    // local phi is V(
-    //     rotDirection:times(-1):y * constant:degtorad,
-    //     rollErr * constant:degtorad,
-    //     rotDirection:x * constant:degtorad
-    // ).
 
     return phi.
 }

@@ -1,15 +1,15 @@
 run once logging.
 local writeLog to true.
 
-global function newEnergyController {
+global function energyController {
 
     // input - potential + kinetic energy
     // output - throttle ctl
-    local throttlePid is pidLoop(0.01, 0.001, 0.01, 0, 1).
+    local throttlePid is pidLoop(0.0015, 0.0005, 0.001, 0, 1).
 
     // input - potential / kinetic energy
     // output - target pitch
-    local pitchPid is pidLoop(20, 0.05, 0, -20, 20).
+    local pitchPid is pidLoop(20, 1, 0, -20, 20).
 
 
     local this is lexicon(

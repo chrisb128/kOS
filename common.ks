@@ -23,3 +23,15 @@ copypath("0:/orbits.ks", "").
 copypath("0:/vessel.ks", "").
 copypath("0:/resources.ks", "").
 copypath("0:/autostage.ks", "").
+copypath("0:/ease.ks", "").
+copypath("0:/moving_average.ks", "").
+copypath("0:/torque.ks", "").
+copypath("0:/torque_pi.ks", "").
+copypath("0:/attitude.ks", "").
+copypath("0:/circle.ks", "").
+copypath("0:/runways.ks", "").
+copypath("0:/energy.ks", "").
+copypath("0:/airplane.ks", "").
+copypath("0:/navigator.ks", "").
+copypath("0:/pidloop2.ks", "").
+copypath("0:/flight_plan.ks", "").

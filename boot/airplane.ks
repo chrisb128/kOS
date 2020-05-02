@@ -15,6 +15,5 @@ copypath("0:/airplane.ks", "").
 copypath("0:/navigator.ks", "").
 copypath("0:/pidloop2.ks", "").
 copypath("0:/flight_plan.ks", "").
-copypath("0:/flight_paths/med_loop.ks", "").
 
-run "0:/test.ks".
+run "0:/common.ks".

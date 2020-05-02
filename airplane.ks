@@ -11,17 +11,17 @@ global function initAutopilot {
         "plan", (plan),
         "cfg", (cfg),
         "nav", initNavigator(plan, cfg),
-        "energy", newEnergyController(),
+        "energy", energyController(),
         "attitude", attitudeController(cfg),
-        "rollCtl", pidLoop(cfg:rollResponse * 1.0, cfg:rollResponse * 0.05, cfg:rollResponse * 0.5, -cfg:rollRange, cfg:rollRange),
-        "pitchAvg", newMovingAverage(5),
+        "rollCtl", pidLoop(cfg:rollResponse * 2.0, cfg:rollResponse * 0.01, cfg:rollResponse * 0.0, -cfg:rollRange, cfg:rollRange),
+        "pitchAvg", newMovingAverage(10),
         "throttle", 0,
         "startTime", time:seconds
     ).
 
     set this:rollCtl:setpoint to 0.
     
-    set this:nav:mode to "ascend".
+    set this:nav:mode to "idle".
 
     local initLogs is { parameter _this. autopilotInitLogs(_this).}.
     set this:initLogs to initLogs:bind(this).
@@ -40,6 +40,10 @@ local function autopilotDrive {
     local plan is this:plan.
     local energy is this:energy.
     local attitude is this:attitude.    
+
+    if (sas) {
+        this:attitude:reset().
+    }
     
     if (nav:mode = "idle") {
         return.
@@ -47,9 +51,9 @@ local function autopilotDrive {
 
     nav:setWaypoint().
     nav:setTargets().
-    local head is nav:heading:getCurrentValue().
-    local tgtAlt is nav:altitude:getCurrentValue().
-    local speed is nav:speed:getCurrentValue().
+    local head is nav:heading.
+    local tgtAlt is nav:altitude.
+    local speed is nav:speed.
 
     local pitch is 0.
     local roll is 0.
@@ -61,7 +65,6 @@ local function autopilotDrive {
     set roll to this:rollCtl:update(time:seconds, headingErr).
     
     local ctls is energy:getControls(tgtAlt, speed).
-    set this:throttle to ctls:throttle.
 
     if (nav:mode = "ascend") {
         local minPitch is this:cfg:ascentMinPitch.
@@ -73,10 +76,13 @@ local function autopilotDrive {
 
         local maxPitch is max(minPitch, min((ship:bounds:bottomaltradar / 4) + minPitch, maxPitchRange)).
         energy:setPitchRange(minPitch, maxPitch).
+        set this:throttle to ctls:throttle.
     } else if (nav:mode = "cruise") {
         energy:setPitchRange(-this:cfg:pitchRange, this:cfg:pitchRange).
+        set this:throttle to ctls:throttle.
     } else if (nav:mode = "approach") {
         energy:setPitchRange(-this:cfg:pitchRange / 2, this:cfg:pitchRange / 4).
+        set this:throttle to ctls:throttle.
     } else if (nav:mode = "land") {
         set this:throttle to 0.
         energy:setPitchRange(-5, 1).
