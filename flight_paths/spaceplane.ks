@@ -1,9 +1,9 @@
-global function spaceplane_ascent {
+global function spaceplane_ascent_plan {
     
-    local ascent is createWaypoint(300, 9000, locationAfterDistanceAtHeading(kscWest:end, 90, 30000)).
-    local startPt is nextWaypoint(ascent, 90, 30000, 650, 15000).
-    local climb is nextWaypoint(startPt, 90, 30000, 850, 16000).
-    local speedUp is nextWaypoint(climb, 90, 60000, 1600, 22000).
+    local ascent_i is createWaypoint(300, 9000, locationAfterDistanceAtHeading(kscWest:end, 90, 30000)).
+    local startPt is nextWaypoint(ascent_i, 90, 30000, 650, 15000).
+    local climb is nextWaypoint(startPt, 90, 30000, 1000, 16000).
+    local speedUp is nextWaypoint(climb, 90, 60000, 1600, 30000).
     local exitAtmo is nextWaypoint(speedUp, 90, 100000, 1800, 50000).
     local exitAtmo2 is nextWaypoint(exitAtmo, 90, 200000, 1800, 50000).
 
@@ -11,7 +11,7 @@ global function spaceplane_ascent {
     
     return createFlightPlan(300, 9000,
         list(
-            ascent,
+            ascent_i,
             startPt,
             climb, 
             speedUp,

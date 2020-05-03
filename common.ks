@@ -35,3 +35,4 @@ copypath("0:/airplane.ks", "").
 copypath("0:/navigator.ks", "").
 copypath("0:/pidloop2.ks", "").
 copypath("0:/flight_plan.ks", "").
+copypath("0:/spaceplane_ascent.ks", "").

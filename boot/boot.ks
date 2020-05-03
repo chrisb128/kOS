@@ -10,10 +10,10 @@ print "===  Done ===".
 run once mission.
 
 if (exists("1:/mission.json")) {
-    local mission is newMission(list()).
-    mission:deserialize("1:/mission.json").
+    local plan is mission(list()).
+    plan:deserialize("1:/mission.json").
 
-    print "Found mission: " + mission:name.
+    print "Found mission: " + plan:name.
     print "Executing in 3 ...".
     wait 1.
     print "Executing in 2 ...".
@@ -25,10 +25,13 @@ if (exists("1:/mission.json")) {
     
     local options is newMissionExecuteOptions().
     set options:afterStep to {
-        mission:serialize("1:/mission.json").
+        plan:serialize("1:/mission.json").
     }.
 
-    mission:execute(options).
+    plan:execute(options).
 } else {
     print "No mission found.".
 }
+
+
+run "0:/rocket_plans/spaceplane_visit_station.ks".

@@ -6,9 +6,11 @@ run once maneuvers.
 run once inclination.
 run once hohmann.
 run once rendezvous.
+run once docking.
+run once spaceplane_ascent.
 
 // MISSION 
-global function newMission {
+global function mission {
     parameter name.
     parameter steps is list().
     
@@ -43,7 +45,9 @@ global MissionStepTypes is lexicon(
     "AddNodeRendezvousTransfer", missionStepTypeAddNodeRendezvousTransfer(),
     "WarpToSoi", missionStepTypeWarpToSoi(),
     "GoToStep", missionStepTypeGoToStep(),
-    "AutoRendezvous", missionStepTypeAutoRendezvous()
+    "AutoRendezvous", missionStepTypeAutoRendezvous(),
+    "AutoDock", missionStepTypeAutoDock(),
+    "SpaceplaneAscent", missionStepTypeSpaceplaneAscent()
 ).
 
 global function missionDeserialize {
@@ -58,7 +62,7 @@ global function missionDeserialize {
 
     for s in serialized:steps {
         if MissionStepTypes:hassuffix(s:key) {
-            this:steps:add(newMissionStep(MissionStepTypes[s:key], s:params)).
+            this:steps:add(missionStep(MissionStepTypes[s:key], s:params)).
         } else {
             print "Could not find step type: " + s:key.
         }
@@ -104,7 +108,7 @@ global function missionExecute {
 }
 
 // MISSION STEP
-global function newMissionStep {
+global function missionStep {
     parameter type, params is lexicon().
 
     local this is lexicon(
@@ -115,7 +119,7 @@ global function newMissionStep {
     return this.
 }
 
-local function missionStepType {
+global function missionStepType {
     parameter key, name.
     
     local this is lexicon(
@@ -203,7 +207,7 @@ local function missionStepTypeAscent {
     return this.
 }
 
-global function newAscentOptions {
+global function ascentOptions {
     parameter targetAp.
     parameter roll is 0.
 
@@ -237,7 +241,7 @@ local function missionStepTypeExecuteNode {
     return this.
 }
 
-global function newNodeTimeOptions {
+global function nodeTimeOptions {
     parameter type.
     parameter arg is 0.
 
@@ -389,6 +393,47 @@ local function missionStepTypeAutoRendezvous {
 
         if (tgt:position:mag > step:params:distance) {
             closeDistanceToTarget(tgt, step:params:distance).
+        }
+    }.
+
+    return this.
+}
+
+
+local function missionStepTypeSpaceplaneAscent {
+    local this is missionStepType("SpaceplaneAscent", "Spaceplane Ascent").
+    
+    set this["execute"] to {
+        parameter mission.
+        parameter step.
+
+        ascend(step:params:targetAp).
+    }.
+    return this.
+}
+
+local function missionStepTypeAutoDock {
+    local this is missionStepType("AutoDock", "Auto Dock").
+
+    set this["execute"] to {
+        parameter mission.
+        parameter step.
+
+        set ship:controlpart to ship:partsTagged(step:params:control)[0].
+
+        local targetDocks is vessel(step:params:target):partsTagged(step:params:targetDock).
+        local targetDock is targetDocks[0].
+        local dockSelected is false.
+        for dockPart in targetDocks {
+            if (not dockPart:hasPartner) {
+                set dockSelected to true.
+                set targetDock to dockPart.
+                break.
+            }
+        }
+
+        if (dockSelected) {            
+            autoDock(targetDock).
         }
     }.
 
