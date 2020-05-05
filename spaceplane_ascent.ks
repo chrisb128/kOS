@@ -32,15 +32,6 @@ global function ascend {
     set pilot:nav:mode to "ascend".
     lock throttle to pilot:throttle.
 
-    if (ship:maxthrust <= 0) {
-        stage.
-        wait 1.
-    }
-
-    local quit is false.
-
-    on AG7 { set quit to true. }.
-
     local prevVel is ship:velocity:surface:mag.
 
     until ship:altitude > (.3 * body:atm:height) and ship:velocity:surface:mag > 1200 and prevVel > ship:velocity:surface:mag {
