@@ -47,7 +47,8 @@ global MissionStepTypes is lexicon(
     "GoToStep", missionStepTypeGoToStep(),
     "AutoRendezvous", missionStepTypeAutoRendezvous(),
     "AutoDock", missionStepTypeAutoDock(),
-    "SpaceplaneAscent", missionStepTypeSpaceplaneAscent()
+    "SpaceplaneAscent", missionStepTypeSpaceplaneAscent(),
+    "AirplaneFlightPlan", missionStepTypeAirplaneFlightPlan()
 ).
 
 global function missionDeserialize {
@@ -84,7 +85,7 @@ local function missionSerialize {
     writeJson(serializable, out).
 }
 
-global function newMissionExecuteOptions {
+global function missionExecuteOptions {
     parameter afterStep is { }.
     parameter beforeStep is { }.
 
@@ -419,7 +420,7 @@ local function missionStepTypeAutoDock {
         parameter mission.
         parameter step.
 
-        set ship:controlpart to ship:partsTagged(step:params:control)[0].
+        ship:partsTagged(step:params:control)[0]:controlFrom().
 
         local targetDocks is vessel(step:params:target):partsTagged(step:params:targetDock).
         local targetDock is targetDocks[0].
@@ -434,6 +435,34 @@ local function missionStepTypeAutoDock {
 
         if (dockSelected) {            
             autoDock(targetDock).
+        }
+    }.
+
+    return this.
+}
+
+local function missionStepTypeAirplaneFlightPlan {
+    local this is missionStepType("AirplaneFlightPlan", "Airplane Flight Plan").
+
+    set this["execute"] to {
+        parameter mission.
+        parameter step.
+
+        local cfg is step:params:config.
+        local plan is step:params:plan.
+        local initMode is step:params:initMode.
+        
+        local pilot is initAutopilot(plan, cfg).
+        pilot:initLogs().
+
+        set pilot:nav:mode to initMode.
+        lock throttle to pilot:throttle.
+
+        until pilot:nav:mode = "idle" {
+
+            pilot:drive().
+            
+            wait 0.
         }
     }.
 

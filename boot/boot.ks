@@ -23,15 +23,14 @@ if (exists("1:/mission.json")) {
 
     clearscreen.
     
-    local options is newMissionExecuteOptions().
+    local options is missionExecuteOptions().
     set options:afterStep to {
         plan:serialize("1:/mission.json").
+        
+        plan:serialize("0:/"+ship:name+"/mission.json").
     }.
 
     plan:execute(options).
 } else {
     print "No mission found.".
 }
-
-
-run "0:/rocket_plans/spaceplane_visit_station.ks".
