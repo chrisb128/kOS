@@ -17,7 +17,7 @@ local plan is mission("Kerbin Station Launch",
     )
 ).
 
-mission:serialize("1:/mission.json").
+plan:serialize("1:/mission.json").
 
-print "Mission Loaded: " + mission:name.
+print "Mission Loaded: " + plan:name.
 print "Reboot to execute.".
